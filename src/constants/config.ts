@@ -1,0 +1,6 @@
+const config = {
+  baseUrl: 'http://localhost:8000',
+  graphqlUrl: 'http://localhost:8000/graphql'
+}
+
+export default config
