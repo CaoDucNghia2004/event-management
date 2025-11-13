@@ -1,17 +1,13 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import useRouteElements from './useRouteElements'
+import { ToastContainer } from 'react-toastify'
 
 function App() {
-  const [count, setCount] = useState(0)
-
+  const routeElements = useRouteElements()
   return (
-    <>
-      <div className='min-h-screen flex items-center justify-center bg-black text-white text-4xl font-bold'>
-        Tailwind is working!
-      </div>
-    </>
+    <div>
+      {routeElements}
+      <ToastContainer />
+    </div>
   )
 }
 
