@@ -32,6 +32,8 @@ export interface Event {
   current_status: string
   current_approval_status: string
   location: Location
+  approval_history?: ApprovalHistory[]
+  status_history?: StatusHistory[]
   created_at: string
   updated_at: string
 }

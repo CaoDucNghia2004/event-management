@@ -22,6 +22,16 @@ export const GET_ALL_EVENTS = gql`
         address
         capacity
       }
+      approval_history {
+        name
+        sequence
+        changed_at
+      }
+      status_history {
+        name
+        sequence
+        changed_at
+      }
       created_at
       updated_at
     }

@@ -154,7 +154,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuthStore } from '../../store/useAuthStore'
-import { User, LogOut, Calendar, Home, MessageSquare, FileText, LogIn, UserPlus } from 'lucide-react'
+import { User, LogOut, Calendar, Home, MessageSquare, FileText, LogIn, UserPlus, Settings } from 'lucide-react'
 import authApiRequests from '../../apiRequests/auth'
 import { toast } from 'react-toastify'
 
@@ -270,6 +270,17 @@ export default function Header() {
                     <Calendar className='w-4 h-4 text-gray-700' />
                     <span className='text-sm font-semibold'>Sự kiện của tôi</span>
                   </Link>
+
+                  {/* Hiển thị menu Admin nếu user có role ADMIN */}
+                  {user.roles?.includes('ADMIN') && (
+                    <Link
+                      to='/admin/dashboard'
+                      className='flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 transition border-t border-gray-100'
+                    >
+                      <Settings className='w-4 h-4 text-blue-600' />
+                      <span className='text-sm font-semibold'>Quản lý hệ thống</span>
+                    </Link>
+                  )}
 
                   <button
                     onClick={handleLogout}

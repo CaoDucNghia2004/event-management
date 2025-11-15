@@ -360,6 +360,7 @@ export default function Login() {
     register: registerCode,
     handleSubmit: handleSubmitCode,
     setError: setErrorCode,
+    setValue: setValueCode,
     formState: { errors: errorsCode, isSubmitting: isSubmittingCode }
   } = useForm<VerifyCodeBodyType>({
     resolver: zodResolver(VerifyCodeBody),
@@ -621,26 +622,60 @@ export default function Login() {
         )}
 
         {step === 'verify' && (
-          <form onSubmit={handleSubmitCode(onSubmitCode)} noValidate className='space-y-4'>
+          <form onSubmit={handleSubmitCode(onSubmitCode)} noValidate className='space-y-6'>
             <h2 className='text-2xl font-bold text-center text-green-600 mb-3'>Xác thực tài khoản</h2>
             <p className='text-gray-600 text-sm text-center'>
               Mã xác thực đã được gửi tới <b>{email}</b>. Vui lòng nhập mã để tiếp tục.
             </p>
 
             <div>
-              <label htmlFor='code' className='block text-sm font-medium text-gray-700 mb-1'>
-                Mã xác thực
-              </label>
-              <input
-                id='code'
-                type='text'
-                {...registerCode('code')}
-                className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 ${
-                  errorsCode.code ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder='Nhập mã xác thực'
-              />
-              {errorsCode.code && <p className='text-red-500 text-sm mt-1'>{errorsCode.code.message}</p>}
+              <label className='block text-sm font-medium text-gray-700 mb-3 text-center'>Mã xác thực</label>
+              <div className='flex justify-center gap-2'>
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <input
+                    key={index}
+                    id={`code-${index}`}
+                    type='text'
+                    maxLength={1}
+                    className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 ${
+                      errorsCode.code ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    onInput={(e) => {
+                      const target = e.target as HTMLInputElement
+                      target.value = target.value.replace(/[^0-9]/g, '')
+                      if (target.value && index < 5) {
+                        const next = document.getElementById(`code-${index + 1}`) as HTMLInputElement
+                        next?.focus()
+                      }
+                      const allInputs = Array.from(document.querySelectorAll('[id^="code-"]')) as HTMLInputElement[]
+                      const code = allInputs.map((input) => input.value).join('')
+                      setValueCode('code', code, { shouldValidate: true })
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !(e.target as HTMLInputElement).value && index > 0) {
+                        const prev = document.getElementById(`code-${index - 1}`) as HTMLInputElement
+                        prev?.focus()
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault()
+                      const paste = e.clipboardData
+                        .getData('text')
+                        .replace(/[^0-9]/g, '')
+                        .slice(0, 6)
+                      const inputs = Array.from(document.querySelectorAll('[id^="code-"]')) as HTMLInputElement[]
+                      paste.split('').forEach((char, i) => {
+                        if (inputs[i]) inputs[i].value = char
+                      })
+                      if (inputs[paste.length - 1]) inputs[paste.length - 1].focus()
+                      const code = inputs.map((input) => input.value).join('')
+                      setValueCode('code', code, { shouldValidate: true })
+                    }}
+                  />
+                ))}
+              </div>
+              <input id='code' type='hidden' {...registerCode('code')} />
+              {errorsCode.code && <p className='text-red-500 text-sm mt-2 text-center'>{errorsCode.code.message}</p>}
             </div>
 
             <div className='flex gap-2 mt-4 items-center'>
