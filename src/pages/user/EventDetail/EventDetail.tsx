@@ -1,7 +1,3 @@
-// export default function EventDetail() {
-//   return <div>EventDetail</div>
-// }
-
 import { useParams, useNavigate } from 'react-router'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_EVENT_BY_ID } from '../../../graphql/queries/eventQueries'

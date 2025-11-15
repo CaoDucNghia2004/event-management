@@ -1,7 +1,3 @@
-// export default function Events() {
-//   return <div>Events</div>
-// }
-
 import { useQuery } from '@apollo/client/react'
 import { MapPin, Users, Clock, Tag } from 'lucide-react'
 import { GET_ALL_EVENTS } from '../../../graphql/queries/eventQueries'

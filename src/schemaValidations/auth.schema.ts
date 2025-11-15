@@ -58,7 +58,9 @@ export const LoginResponse = z.object({
       avatar: z.string().nullable(),
       phone: z.string().nullable(),
       roles: z.array(z.string()),
-      is_active: z.boolean()
+      is_active: z.boolean(),
+      reputation_score: z.number().optional(),
+      alerts: z.array(z.any()).optional().default([])
     }),
     access_token: z.string()
   })
@@ -136,3 +138,23 @@ export const ResetPasswordResponse = z.object({
   data: z.null()
 })
 export type ResetPasswordResponseType = z.infer<typeof ResetPasswordResponse>
+
+export const RefreshResponse = z.object({
+  status: z.number(),
+  message: z.string(),
+  data: z.object({
+    account: z.object({
+      email: z.string(),
+      name: z.string(),
+      avatar: z.string().nullable(),
+      phone: z.string().nullable(),
+      roles: z.array(z.string()),
+      is_active: z.boolean(),
+      reputation_score: z.number().optional(),
+      alerts: z.array(z.any()).optional().default([])
+    }),
+    access_token: z.string()
+  })
+})
+
+export type RefreshResponseType = z.infer<typeof RefreshResponse>

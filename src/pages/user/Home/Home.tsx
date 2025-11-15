@@ -1,7 +1,3 @@
-// export default function Home() {
-//   return <div>Home</div>
-// }
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { ChevronLeft, ChevronRight, Calendar, MapPin, Users } from 'lucide-react'

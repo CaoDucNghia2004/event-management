@@ -1,7 +1,3 @@
-// export default function MyRegistrations() {
-//   return <div>MyRegistrations</div>
-// }
-
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_REGISTRATIONS_BY_USER } from '../../../graphql/queries/registrationQueries'
 import { CANCEL_REGISTRATION } from '../../../graphql/mutations/registrationMutations'

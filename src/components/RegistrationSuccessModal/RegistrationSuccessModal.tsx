@@ -18,7 +18,7 @@ export default function RegistrationSuccessModal({ isOpen, onClose, registration
   const isWaiting = registration.current_status === 'WAITING'
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(registration.code_roll_call)
+    navigator.clipboard.writeText(registration.code_roll_call ?? '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
