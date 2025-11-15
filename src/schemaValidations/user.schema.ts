@@ -10,7 +10,9 @@ export const UserInfoResponse = z.object({
     phone: z.string().nullable(),
     avatar: z.string().nullable(),
     is_active: z.boolean(),
-    roles: z.array(z.string())
+    roles: z.array(z.string()),
+    reputation_score: z.number().optional(),
+    alerts: z.array(z.any()).optional().default([])
   })
 })
 
@@ -38,7 +40,9 @@ export const EditProfileResponse = z.object({
     phone: z.string().nullable(),
     avatar: z.string().nullable(),
     is_active: z.boolean(),
-    roles: z.array(z.string())
+    roles: z.array(z.string()),
+    reputation_score: z.number().optional(),
+    alerts: z.array(z.any()).optional().default([])
   })
 })
 
