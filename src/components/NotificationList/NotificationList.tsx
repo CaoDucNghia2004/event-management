@@ -18,11 +18,49 @@ export default function NotificationList({ eventId, enableRealtime = true }: Not
   const eventSourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
-    if (!eventId || !enableRealtime) {
+    if (!eventId) {
       setLoading(false)
       return
     }
 
+    // Nếu không bật realtime → Dùng polling thay vì SSE
+    if (!enableRealtime) {
+      const fetchNotifications = async () => {
+        try {
+          const token = getAccessTokenFromLS()
+          const response = await fetch(`${config.BACKEND_URL}/api/v1/notification`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          })
+          const data = await response.json()
+          const allNotifications = data.data?.data || data.data || []
+
+          // Filter notifications for this event
+          const eventNotifications = allNotifications
+            .filter((n: Notification) => n.event_id === eventId)
+            .sort(
+              (a: Notification, b: Notification) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            )
+          // ensure messages are ordered oldest -> newest (newest at bottom)
+          setNotifications(eventNotifications)
+          setLoading(false)
+        } catch (error) {
+          console.error('Error fetching notifications:', error)
+          setLoading(false)
+        }
+      }
+
+      // Fetch ngay khi mount
+      fetchNotifications()
+
+      // Polling mỗi 5 giây
+      const interval = setInterval(fetchNotifications, 5000)
+
+      return () => clearInterval(interval)
+    }
+
+    // Nếu bật realtime → Dùng SSE
     // Kết nối SSE
     const connectSSE = () => {
       const token = getAccessTokenFromLS()
@@ -37,8 +75,12 @@ export default function NotificationList({ eventId, enableRealtime = true }: Not
         try {
           const data = JSON.parse(event.data)
           console.log('📨 Initial notifications:', data)
-          // Reverse để tin nhắn cũ lên đầu, mới xuống dưới
-          const sortedNotifications = (data.notifications || []).reverse()
+          // Sort to ensure messages are ordered oldest -> newest (newest at bottom)
+          const sortedNotifications = (data.notifications || [])
+            .slice()
+            .sort(
+              (a: Notification, b: Notification) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            )
           setNotifications(sortedNotifications)
           setLoading(false)
           setConnected(true)
@@ -164,7 +206,7 @@ export default function NotificationList({ eventId, enableRealtime = true }: Not
             <div className='flex items-center justify-center py-2'>
               <div className='flex items-center gap-2 text-xs text-gray-400'>
                 <span className='w-1.5 h-1.5 bg-gray-400 rounded-full'></span>
-                📚 Lịch sử tin nhắn (Sự kiện đã kết thúc)
+                Lịch sử tin nhắn (Sự kiện đã kết thúc)
               </div>
             </div>
           )}

@@ -8,18 +8,19 @@ Tạo chức năng **"Gửi tin nhắn đến người tham gia"** cho Admin v�
 
 ## 📊 Logic theo Status
 
-| Status | Admin gửi tin nhắn | User nhận real-time | User xem lịch sử | Badge |
-|--------|-------------------|---------------------|------------------|-------|
-| **OPEN** 🟡 | ✅ Yes | ✅ Yes | ✅ Yes | Sắp diễn ra |
-| **ONGOING** 🟢 | ✅ Yes | ✅ Yes | ✅ Yes | Đang diễn ra |
-| **COMPLETED** 📚 | ❌ No | ❌ No | ✅ Yes (read-only) | Đã kết thúc |
-| **CANCELLED** ❌ | ❌ No | ❌ No | ❌ No | - |
+| Status           | Admin gửi tin nhắn | User nhận real-time | User xem lịch sử   | Badge        |
+| ---------------- | ------------------ | ------------------- | ------------------ | ------------ |
+| **OPEN** 🟡      | ✅ Yes             | ✅ Yes              | ✅ Yes             | Sắp diễn ra  |
+| **ONGOING** 🟢   | ✅ Yes             | ✅ Yes              | ✅ Yes             | Đang diễn ra |
+| **COMPLETED** 📚 | ❌ No              | ❌ No               | ✅ Yes (read-only) | Đã kết thúc  |
+| **CANCELLED** ❌ | ❌ No              | ❌ No               | ❌ No              | -            |
 
 ---
 
 ## 📁 Files Created
 
 ### **1. SendMessageModal Component**
+
 ```
 src/components/SendMessageModal/
 ├── SendMessageModal.tsx  ← Modal gửi tin nhắn
@@ -27,6 +28,7 @@ src/components/SendMessageModal/
 ```
 
 **Features:**
+
 - ✅ Gradient header (blue → indigo)
 - ✅ Textarea (max 1000 ký tự)
 - ✅ Character counter
@@ -41,6 +43,7 @@ src/components/SendMessageModal/
 ### **1. ManageEvents.tsx** - Admin Page
 
 **Changes:**
+
 ```tsx
 // Import
 import { MessageSquare } from 'lucide-react'
@@ -50,21 +53,25 @@ import SendMessageModal from '../../../components/SendMessageModal'
 const [sendMessageEvent, setSendMessageEvent] = useState<Event | null>(null)
 
 // Icon gửi tin nhắn (chỉ OPEN/ONGOING)
-{(event.current_status === 'OPEN' || event.current_status === 'ONGOING') && (
-  <button onClick={() => setSendMessageEvent(event)}>
-    <MessageSquare className='w-5 h-5' />
-  </button>
-)}
+{
+  ;(event.current_status === 'OPEN' || event.current_status === 'ONGOING') && (
+    <button onClick={() => setSendMessageEvent(event)}>
+      <MessageSquare className='w-5 h-5' />
+    </button>
+  )
+}
 
 // Modal
-{sendMessageEvent && (
-  <SendMessageModal
-    isOpen={!!sendMessageEvent}
-    onClose={() => setSendMessageEvent(null)}
-    eventId={sendMessageEvent.id}
-    eventTitle={sendMessageEvent.title}
-  />
-)}
+{
+  sendMessageEvent && (
+    <SendMessageModal
+      isOpen={!!sendMessageEvent}
+      onClose={() => setSendMessageEvent(null)}
+      eventId={sendMessageEvent.id}
+      eventTitle={sendMessageEvent.title}
+    />
+  )
+}
 ```
 
 ---
@@ -72,39 +79,37 @@ const [sendMessageEvent, setSendMessageEvent] = useState<Event | null>(null)
 ### **2. Messages.tsx** - User Page
 
 **Changes:**
+
 ```tsx
 // Filter: Chỉ hiện OPEN, ONGOING, COMPLETED
 const confirmedRegistrations = registrations.filter(
-  (reg) =>
-    reg.current_status === 'CONFIRMED' &&
-    ['OPEN', 'ONGOING', 'COMPLETED'].includes(reg.event?.current_status)
+  (reg) => reg.current_status === 'CONFIRMED' && ['OPEN', 'ONGOING', 'COMPLETED'].includes(reg.event?.current_status)
 )
 
 // Status badges trong sidebar
-{event.current_status === 'OPEN' && (
-  <span className='bg-yellow-100 text-yellow-700'>🟡 Sắp diễn ra</span>
-)}
-{event.current_status === 'ONGOING' && (
-  <span className='bg-green-100 text-green-700'>🟢 Đang diễn ra</span>
-)}
-{event.current_status === 'COMPLETED' && (
-  <span className='bg-gray-100 text-gray-600'>📚 Đã kết thúc</span>
-)}
+{
+  event.current_status === 'OPEN' && <span className='bg-yellow-100 text-yellow-700'>🟡 Sắp diễn ra</span>
+}
+{
+  event.current_status === 'ONGOING' && <span className='bg-green-100 text-green-700'>🟢 Đang diễn ra</span>
+}
+{
+  event.current_status === 'COMPLETED' && <span className='bg-gray-100 text-gray-600'>📚 Đã kết thúc</span>
+}
 
 // Warning cho COMPLETED
-{selectedEvent.current_status === 'COMPLETED' && (
-  <div className='bg-gray-50 border border-gray-200'>
-    ⚠️ Sự kiện đã kết thúc. Bạn chỉ có thể xem lại lịch sử tin nhắn.
-  </div>
-)}
+{
+  selectedEvent.current_status === 'COMPLETED' && (
+    <div className='bg-gray-50 border border-gray-200'>
+      ⚠️ Sự kiện đã kết thúc. Bạn chỉ có thể xem lại lịch sử tin nhắn.
+    </div>
+  )
+}
 
 // Real-time logic
-<NotificationList
+;<NotificationList
   eventId={selectedEvent.id}
-  enableRealtime={
-    selectedEvent.current_status === 'OPEN' ||
-    selectedEvent.current_status === 'ONGOING'
-  }
+  enableRealtime={selectedEvent.current_status === 'OPEN' || selectedEvent.current_status === 'ONGOING'}
 />
 ```
 
@@ -113,14 +118,17 @@ const confirmedRegistrations = registrations.filter(
 ### **3. NotificationList.tsx** - Component
 
 **Changes:**
+
 ```tsx
 // Archive indicator cho COMPLETED
-{!enableRealtime && notifications.length > 0 && (
-  <div>
-    <span className='bg-gray-400'></span>
-    📚 Lịch sử tin nhắn (Sự kiện đã kết thúc)
-  </div>
-)}
+{
+  !enableRealtime && notifications.length > 0 && (
+    <div>
+      <span className='bg-gray-400'></span>
+      Lịch sử tin nhắn (Sự kiện đã kết thúc)
+    </div>
+  )
+}
 ```
 
 ---
@@ -128,6 +136,7 @@ const confirmedRegistrations = registrations.filter(
 ### **4. notification.ts** - API Requests
 
 **Changes:**
+
 ```tsx
 // Export named function
 export const sendNotification = (body: CreateNotificationInput) =>
@@ -139,6 +148,7 @@ export const sendNotification = (body: CreateNotificationInput) =>
 ## 🎨 UI Screenshots
 
 ### **Admin - ManageEvents**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  STT │ Tên sự kiện │ ... │ Trạng thái │ Hành động      │
@@ -153,6 +163,7 @@ export const sendNotification = (body: CreateNotificationInput) =>
 ```
 
 ### **SendMessageModal**
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  💬 Gửi tin nhắn đến người tham gia            ✕   │
@@ -171,6 +182,7 @@ export const sendNotification = (body: CreateNotificationInput) =>
 ```
 
 ### **User - Messages Page**
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  💬 Tin nhắn                                        │
@@ -212,6 +224,7 @@ export const sendNotification = (body: CreateNotificationInput) =>
 ## 🚀 How to Test
 
 ### **Admin:**
+
 1. Login as admin
 2. Vào "Quản lý sự kiện"
 3. Tìm sự kiện **OPEN** hoặc **ONGOING**
@@ -221,6 +234,7 @@ export const sendNotification = (body: CreateNotificationInput) =>
 7. ✅ Success notification
 
 ### **User:**
+
 1. Login as user (đã đăng ký sự kiện)
 2. Vào "Tin nhắn"
 3. Chọn sự kiện:
@@ -232,14 +246,13 @@ export const sendNotification = (body: CreateNotificationInput) =>
 
 ## 🎉 Result
 
-**Perfect implementation!** 
+**Perfect implementation!**
 
 ✅ Admin gửi tin nhắn cho OPEN/ONGOING  
 ✅ User nhận real-time  
 ✅ COMPLETED: Read-only, không real-time  
 ✅ UI đẹp, logic rõ ràng  
 ✅ Badges và warnings đầy đủ  
-✅ Build success  
+✅ Build success
 
 **Ready to use!** 🚀
-

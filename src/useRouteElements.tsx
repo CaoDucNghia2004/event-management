@@ -68,46 +68,6 @@ export default function useRouteElements() {
       )
     },
     {
-      path: '/events',
-      element: (
-        <MainLayout>
-          <Events />
-        </MainLayout>
-      )
-    },
-    {
-      path: '/events/:id',
-      element: (
-        <MainLayout>
-          <EventDetail />
-        </MainLayout>
-      )
-    },
-    {
-      path: '/papers',
-      element: (
-        <MainLayout>
-          <Papers />
-        </MainLayout>
-      )
-    },
-    {
-      path: '/papers/:id',
-      element: (
-        <MainLayout>
-          <PaperDetail />
-        </MainLayout>
-      )
-    },
-    {
-      path: '/messages',
-      element: (
-        <MainLayout>
-          <Messages />
-        </MainLayout>
-      )
-    },
-    {
       element: <PublicOnlyRoute />,
       children: [
         { path: '/login', element: <Login /> },
@@ -118,6 +78,46 @@ export default function useRouteElements() {
     {
       element: <PrivateRoute />,
       children: [
+        {
+          path: '/events',
+          element: (
+            <MainLayout>
+              <Events />
+            </MainLayout>
+          )
+        },
+        {
+          path: '/events/:id',
+          element: (
+            <MainLayout>
+              <EventDetail />
+            </MainLayout>
+          )
+        },
+        {
+          path: '/papers',
+          element: (
+            <MainLayout>
+              <Papers />
+            </MainLayout>
+          )
+        },
+        {
+          path: '/papers/:id',
+          element: (
+            <MainLayout>
+              <PaperDetail />
+            </MainLayout>
+          )
+        },
+        {
+          path: '/messages',
+          element: (
+            <MainLayout>
+              <Messages />
+            </MainLayout>
+          )
+        },
         {
           path: '/profile',
           element: (

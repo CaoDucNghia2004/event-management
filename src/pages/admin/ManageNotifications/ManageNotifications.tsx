@@ -52,9 +52,16 @@ export default function ManageNotifications() {
   }, [])
 
   // Scroll to bottom when messages change
+  // Scroll to bottom when selecting an event or when its notifications change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [selectedEvent?.notifications])
+  }, [selectedEvent?.id, selectedEvent?.notifications?.length])
+
+  // Clear message draft when switching to a different event
+  useEffect(() => {
+    // Reset draft whenever selectedEvent changes
+    setMessage('')
+  }, [selectedEvent?.id])
 
   // Group events with their notifications
   const eventsWithNotifications = useMemo(() => {
@@ -129,12 +136,16 @@ export default function ManageNotifications() {
       })
 
       setMessage('')
-      await fetchNotifications()
 
-      // Update selected event with new notification
-      const updatedNotifications = await notificationApiRequests.getAll()
-      const notificationsData = updatedNotifications.data.data.data || updatedNotifications.data.data || []
-      const eventNotifications = notificationsData.filter((n: Notification) => n.event_id === selectedEvent.id)
+      // Fetch notifications mới và update event hiện tại
+      const response = await notificationApiRequests.getAll()
+      const notificationsData = response.data.data.data || response.data.data || []
+      setNotifications(notificationsData)
+
+      // Filter notifications cho event hiện tại
+      const eventNotifications = notificationsData.filter(
+        (n: Notification) => String(n.event_id).trim() === String(selectedEvent.id).trim()
+      )
       setSelectedEvent({
         ...selectedEvent,
         notifications: eventNotifications.sort(
@@ -176,13 +187,17 @@ export default function ManageNotifications() {
           showConfirmButton: false,
           timer: 1500
         })
-        await fetchNotifications()
 
-        // Update selected event
+        // Fetch notifications mới và update event hiện tại
+        const response = await notificationApiRequests.getAll()
+        const notificationsData = response.data.data.data || response.data.data || []
+        setNotifications(notificationsData)
+
+        // Update selected event nếu có
         if (selectedEvent) {
-          const updatedNotifications = await notificationApiRequests.getAll()
-          const notificationsData = updatedNotifications.data.data.data || updatedNotifications.data.data || []
-          const eventNotifications = notificationsData.filter((n: Notification) => n.event_id === selectedEvent.id)
+          const eventNotifications = notificationsData.filter(
+            (n: Notification) => String(n.event_id).trim() === String(selectedEvent.id).trim()
+          )
           setSelectedEvent({
             ...selectedEvent,
             notifications: eventNotifications.sort(
