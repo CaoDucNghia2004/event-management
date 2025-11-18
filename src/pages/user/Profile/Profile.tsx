@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'react-toastify'
+import Swal from 'sweetalert2'
 import { useQuery } from '@apollo/client/react'
 import {
   ChangePasswordBody,
@@ -12,9 +12,10 @@ import {
 } from '../../../schemaValidations/user.schema'
 import userApiRequests from '../../../apiRequests/user'
 import { useAuthStore } from '../../../store/useAuthStore'
-import { Eye, EyeOff, TrendingUp, TrendingDown, Award, RefreshCw } from 'lucide-react'
-import { GET_HISTORY_POINTS_BY_USER, GET_USER_REPUTATION_STATS } from '../../../graphql/queries/reputationQueries'
-import type { HistoryPointsByUserData, UserReputationStatsData } from '../../../types/reputation.types'
+import { Eye, EyeOff, TrendingUp, TrendingDown, Award } from 'lucide-react'
+import { GET_HISTORY_POINTS_BY_USER } from '../../../graphql/queries/reputationQueries'
+import type { HistoryPointsByUserData } from '../../../types/reputation.types'
+import config from '../../../constants/config'
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'info' | 'password' | 'reputation'>('info')
@@ -27,6 +28,15 @@ export default function ProfilePage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const hasFetched = useRef(false)
+
+  // Helper to get full avatar URL
+  const getAvatarUrl = (avatar: string | null | undefined) => {
+    if (!avatar) return null
+    if (avatar.startsWith('http')) return avatar
+    const fullUrl = `${config.baseUrl}${avatar}`
+    console.log('🖼️ Avatar URL:', { avatar, fullUrl, baseUrl: config.baseUrl })
+    return fullUrl
+  }
 
   const {
     register,
@@ -63,10 +73,15 @@ export default function ProfilePage() {
           const user = res.data.data
           setUserData(user)
           reset({ name: user.name, phone: user.phone || '' })
-          setPreviewAvatar(user.avatar || null)
+          setPreviewAvatar(getAvatarUrl(user.avatar))
         }
       } catch {
-        toast.error('Không thể tải thông tin người dùng!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: 'Không thể tải thông tin người dùng!',
+          confirmButtonText: 'Đóng'
+        })
       }
     }
 
@@ -94,15 +109,31 @@ export default function ProfilePage() {
     try {
       const res = await userApiRequests.editProfile(data)
       if (res.status === 200) {
-        toast.success('Cập nhật thông tin thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Cập nhật thông tin thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
         const updatedUser = { ...(userData as UserInfoResponseType['data']), ...data }
         setUserData(updatedUser)
         setUser(updatedUser)
       } else {
-        toast.error(res.data?.message || 'Không thể cập nhật thông tin!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: res.data?.message || 'Không thể cập nhật thông tin!',
+          confirmButtonText: 'Đóng'
+        })
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Lỗi khi cập nhật!')
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Lỗi khi cập nhật!',
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 
@@ -110,21 +141,104 @@ export default function ProfilePage() {
     try {
       const res = await userApiRequests.changePassword(data)
       if (res.status === 200) {
-        toast.success('Đổi mật khẩu thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đổi mật khẩu thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
         resetPassword()
       } else {
-        toast.error(res.data?.message || 'Không thể đổi mật khẩu!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: res.data?.message || 'Không thể đổi mật khẩu!',
+          confirmButtonText: 'Đóng'
+        })
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Lỗi khi đổi mật khẩu!')
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text:
+          (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Lỗi khi đổi mật khẩu!',
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const previewUrl = URL.createObjectURL(file)
-      setPreviewAvatar(previewUrl)
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: 'Chỉ chấp nhận file ảnh (JPG, PNG, WEBP)!',
+        confirmButtonText: 'Đóng'
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: 'Kích thước ảnh không được vượt quá 5MB!',
+        confirmButtonText: 'Đóng'
+      })
+      return
+    }
+
+    // Upload to server
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const res = await userApiRequests.uploadAvatar(formData)
+
+      if (res.status === 200 && res.data?.data) {
+        const newAvatar = res.data.data.avatar
+
+        console.log('✅ Upload success, avatar path:', newAvatar)
+
+        // Update preview with full URL from backend
+        setPreviewAvatar(getAvatarUrl(newAvatar))
+
+        // Update user data in state and store
+        const updatedUser = { ...(userData as UserInfoResponseType['data']), avatar: newAvatar }
+        setUserData(updatedUser)
+        setUser(updatedUser)
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Cập nhật avatar thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: 'Không thể upload avatar!',
+          confirmButtonText: 'Đóng'
+        })
+      }
+    } catch (error) {
+      const errorMsg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Lỗi khi upload avatar!'
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: errorMsg,
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 
@@ -176,7 +290,7 @@ export default function ProfilePage() {
                 <div className='relative'>
                   {previewAvatar || userData?.avatar ? (
                     <img
-                      src={previewAvatar || userData?.avatar || '/default-avatar.png'}
+                      src={previewAvatar || getAvatarUrl(userData?.avatar) || '/default-avatar.png'}
                       alt='Avatar'
                       className='w-24 h-24 rounded-full object-cover border border-gray-300'
                     />
@@ -338,28 +452,12 @@ export default function ProfilePage() {
 }
 
 function ReputationTab({ userData }: { userData: UserInfoResponseType['data'] | null }) {
-  const {
-    data: historyData,
-    loading: historyLoading,
-    refetch: refetchHistory
-  } = useQuery<HistoryPointsByUserData>(GET_HISTORY_POINTS_BY_USER, {
+  const { data: historyData, loading: historyLoading } = useQuery<HistoryPointsByUserData>(GET_HISTORY_POINTS_BY_USER, {
     variables: { user_id: userData?.id },
-    skip: !userData?.id
+    skip: !userData?.id,
+    fetchPolicy: 'cache-and-network', // Luôn fetch từ network để có data mới nhất
+    notifyOnNetworkStatusChange: true
   })
-
-  const {
-    data: statsData,
-    loading: statsLoading,
-    refetch: refetchStats
-  } = useQuery<UserReputationStatsData>(GET_USER_REPUTATION_STATS, {
-    variables: { user_id: userData?.id },
-    skip: !userData?.id
-  })
-
-  const handleRefresh = async () => {
-    await Promise.all([refetchHistory(), refetchStats()])
-    toast.success('Đã cập nhật dữ liệu mới!')
-  }
 
   const reputationScore = userData?.reputation_score ?? 70
   const alerts = userData?.alerts ?? []
@@ -379,12 +477,29 @@ function ReputationTab({ userData }: { userData: UserInfoResponseType['data'] | 
   const getActionIcon = (actionType: string) => {
     switch (actionType) {
       case 'CHECK_IN':
-        return <TrendingUp className='w-5 h-5 text-green-600' />
+        return (
+          <div className='w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg'>
+            <TrendingUp className='w-6 h-6 text-white' />
+          </div>
+        )
       case 'LATE_CANCELLATION':
+        return (
+          <div className='w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg'>
+            <TrendingDown className='w-6 h-6 text-white' />
+          </div>
+        )
       case 'NO_SHOW':
-        return <TrendingDown className='w-5 h-5 text-red-600' />
+        return (
+          <div className='w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center shadow-lg'>
+            <TrendingDown className='w-6 h-6 text-white' />
+          </div>
+        )
       default:
-        return <Award className='w-5 h-5 text-gray-600' />
+        return (
+          <div className='w-12 h-12 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center shadow-lg'>
+            <Award className='w-6 h-6 text-white' />
+          </div>
+        )
     }
   }
 
@@ -401,17 +516,35 @@ function ReputationTab({ userData }: { userData: UserInfoResponseType['data'] | 
     }
   }
 
+  const getActionBadge = (actionType: string) => {
+    switch (actionType) {
+      case 'CHECK_IN':
+        return (
+          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'>
+            Tích cực
+          </span>
+        )
+      case 'LATE_CANCELLATION':
+        return (
+          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800'>
+            Cảnh báo
+          </span>
+        )
+      case 'NO_SHOW':
+        return (
+          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'>
+            Vi phạm
+          </span>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <div className='space-y-6'>
       <div className='flex items-center justify-between'>
         <h2 className='text-2xl font-semibold text-gray-800'>Điểm uy tín</h2>
-        <button
-          onClick={handleRefresh}
-          className='flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200'
-        >
-          <RefreshCw className='w-4 h-4' />
-          <span>Làm mới</span>
-        </button>
       </div>
 
       {/* Điểm hiện tại */}
@@ -475,79 +608,106 @@ function ReputationTab({ userData }: { userData: UserInfoResponseType['data'] | 
         </div>
       )}
 
-      {/* Thống kê */}
-      {statsLoading ? (
-        <div className='text-center py-8 text-gray-500'>Đang tải thống kê...</div>
-      ) : statsData?.userReputationStats ? (
-        <div>
-          <h3 className='text-lg font-semibold text-gray-800 mb-4'>Thống kê</h3>
-          <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-            <div className='bg-green-50 rounded-lg p-4 border border-green-200'>
-              <p className='text-sm text-gray-600 mb-1'>Đã tham gia</p>
-              <p className='text-3xl font-bold text-green-600'>{statsData.userReputationStats.total_events_attended}</p>
-            </div>
-            <div className='bg-red-50 rounded-lg p-4 border border-red-200'>
-              <p className='text-sm text-gray-600 mb-1'>Vắng mặt</p>
-              <p className='text-3xl font-bold text-red-600'>{statsData.userReputationStats.total_no_shows}</p>
-            </div>
-            <div className='bg-orange-50 rounded-lg p-4 border border-orange-200'>
-              <p className='text-sm text-gray-600 mb-1'>Hủy muộn</p>
-              <p className='text-3xl font-bold text-orange-600'>
-                {statsData.userReputationStats.total_late_cancellations}
-              </p>
-            </div>
-            <div className='bg-blue-50 rounded-lg p-4 border border-blue-200'>
-              <p className='text-sm text-gray-600 mb-1'>Điểm tích lũy</p>
-              <p className='text-3xl font-bold text-blue-600'>+{statsData.userReputationStats.total_points_gained}</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {/* Lịch sử điểm */}
       <div>
         <h3 className='text-lg font-semibold text-gray-800 mb-4'>Lịch sử thay đổi điểm</h3>
         {historyLoading ? (
-          <div className='text-center py-8 text-gray-500'>Đang tải lịch sử...</div>
+          <div className='flex items-center justify-center py-12'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600'></div>
+          </div>
         ) : historyData?.historyPointsByUser && historyData.historyPointsByUser.length > 0 ? (
-          <div className='space-y-3 max-h-96 overflow-y-auto'>
-            {historyData.historyPointsByUser.map((point) => (
-              <div key={point.id} className='flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50'>
-                <div className='flex items-center gap-4 flex-1'>
-                  {getActionIcon(point.action_type)}
-                  <div className='flex-1'>
-                    <div className='flex items-center gap-2'>
-                      <span className='font-semibold text-gray-800'>{getActionText(point.action_type)}</span>
-                      {point.event && <span className='text-sm text-gray-500'>- {point.event.title}</span>}
+          <div className='space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar'>
+            {historyData.historyPointsByUser.map((point, index) => (
+              <div
+                key={point._id}
+                className='group relative bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl p-5 hover:shadow-xl hover:scale-[1.02] transition-all duration-300'
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                {/* Decorative gradient overlay */}
+                <div className='absolute inset-0 bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-blue-500/5 group-hover:via-purple-500/5 group-hover:to-pink-500/5 rounded-2xl transition-all duration-300' />
+
+                <div className='relative flex items-start justify-between gap-4'>
+                  {/* Left side - Icon & Info */}
+                  <div className='flex items-start gap-4 flex-1'>
+                    <div className='flex-shrink-0 transform group-hover:scale-110 transition-transform duration-300'>
+                      {getActionIcon(point.action_type)}
                     </div>
-                    <p className='text-sm text-gray-600'>{point.reason}</p>
-                    <p className='text-xs text-gray-400 mt-1'>
-                      {new Date(point.created_at).toLocaleDateString('vi-VN', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
+                    <div className='flex-1 min-w-0'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h4 className='font-bold text-gray-900 text-lg'>{getActionText(point.action_type)}</h4>
+                        {getActionBadge(point.action_type)}
+                      </div>
+                      {point.event && (
+                        <div className='mb-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2'>
+                          <p className='text-sm font-medium text-blue-900 truncate' title={point.event.title}>
+                            📅 {point.event.title}
+                          </p>
+                        </div>
+                      )}
+                      <p className='text-sm text-gray-600 mb-3 leading-relaxed'>{point.reason}</p>
+                      <div className='flex items-center gap-2 text-xs text-gray-400'>
+                        <svg
+                          className='w-4 h-4'
+                          fill='none'
+                          stroke='currentColor'
+                          viewBox='0 0 24 24'
+                          xmlns='http://www.w3.org/2000/svg'
+                        >
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+                          />
+                        </svg>
+                        <span>
+                          {new Date(point.created_at).toLocaleString('vi-VN', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className='text-right'>
-                  <div className={`text-2xl font-bold ${point.change_amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {point.change_amount > 0 ? '+' : ''}
-                    {point.change_amount}
+
+                  {/* Right side - Points */}
+                  <div className='text-right flex-shrink-0'>
+                    <div
+                      className={`text-4xl font-black mb-2 ${
+                        point.change_amount > 0
+                          ? 'text-transparent bg-clip-text bg-gradient-to-br from-green-500 to-emerald-600'
+                          : 'text-transparent bg-clip-text bg-gradient-to-br from-red-500 to-rose-600'
+                      }`}
+                    >
+                      {point.change_amount > 0 ? '+' : ''}
+                      {point.change_amount}
+                    </div>
+                    <div className='inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full'>
+                      <span className='text-xs font-semibold text-gray-600'>{point.old_point}</span>
+                      <svg className='w-3 h-3 text-gray-400' fill='currentColor' viewBox='0 0 20 20'>
+                        <path
+                          fillRule='evenodd'
+                          d='M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z'
+                          clipRule='evenodd'
+                        />
+                      </svg>
+                      <span className='text-xs font-bold text-gray-900'>{point.new_point}</span>
+                    </div>
                   </div>
-                  <p className='text-xs text-gray-500'>
-                    {point.old_point} → {point.new_point}
-                  </p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className='text-center py-12 text-gray-500'>
-            <Award className='w-16 h-16 mx-auto mb-3 text-gray-300' />
-            <p>Chưa có lịch sử thay đổi điểm</p>
+          <div className='text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300'>
+            <div className='inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 mb-4'>
+              <Award className='w-10 h-10 text-gray-400' />
+            </div>
+            <p className='text-gray-500 font-medium'>Chưa có lịch sử thay đổi điểm</p>
+            <p className='text-gray-400 text-sm mt-2'>Tham gia sự kiện để tích lũy điểm uy tín</p>
           </div>
         )}
       </div>

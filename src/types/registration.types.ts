@@ -4,6 +4,12 @@ export interface StatusHistory {
   changed_at: string
 }
 
+export interface RegistrationUser {
+  id: string
+  name: string
+  email: string
+}
+
 export interface Registration {
   id: string
   user_id: string
@@ -18,11 +24,14 @@ export interface Registration {
   status_history?: StatusHistory[]
   created_at: string
   updated_at?: string
+  user?: RegistrationUser
   event?: {
     id: string
     title: string
     start_date: string
     end_date: string
+    current_status: string
+    image_url?: string
     location?: {
       name: string
       address?: string
@@ -36,6 +45,10 @@ export interface RegistrationsData {
 
 export interface RegistrationsByUserData {
   registrationsByUser: Registration[]
+}
+
+export interface RegistrationsByEventData {
+  registrationsByEvent: Registration[] // Tên giữ nguyên để không phải sửa nhiều chỗ, nhưng thực tế gọi query 'registrations'
 }
 
 export interface CreateRegistrationData {

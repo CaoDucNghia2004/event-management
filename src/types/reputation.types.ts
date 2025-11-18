@@ -1,5 +1,5 @@
 export interface HistoryPoint {
-  id: string
+  _id: string
   user_id: string
   event_id: string
   old_point: number

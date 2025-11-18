@@ -14,6 +14,12 @@ import Events from './pages/user/Events'
 import Dashboard from './pages/admin/Dashboard'
 import ManageLocations from './pages/admin/ManageLocations'
 import ManageEvents from './pages/admin/ManageEvents'
+import ManagePapers from './pages/admin/ManagePapers'
+import ManageFeedbacks from './pages/admin/ManageFeedbacks'
+import ManageNotifications from './pages/admin/ManageNotifications'
+import Papers from './pages/user/Papers'
+import PaperDetail from './pages/user/PaperDetail'
+import Messages from './pages/user/Messages'
 
 // export default function useRouteElements() {
 //   const routeElements = useRoutes([
@@ -78,6 +84,30 @@ export default function useRouteElements() {
       )
     },
     {
+      path: '/papers',
+      element: (
+        <MainLayout>
+          <Papers />
+        </MainLayout>
+      )
+    },
+    {
+      path: '/papers/:id',
+      element: (
+        <MainLayout>
+          <PaperDetail />
+        </MainLayout>
+      )
+    },
+    {
+      path: '/messages',
+      element: (
+        <MainLayout>
+          <Messages />
+        </MainLayout>
+      )
+    },
+    {
       element: <PublicOnlyRoute />,
       children: [
         { path: '/login', element: <Login /> },
@@ -126,6 +156,30 @@ export default function useRouteElements() {
           element: (
             <MainLayoutAdmin>
               <ManageEvents />
+            </MainLayoutAdmin>
+          )
+        },
+        {
+          path: '/admin/papers',
+          element: (
+            <MainLayoutAdmin>
+              <ManagePapers />
+            </MainLayoutAdmin>
+          )
+        },
+        {
+          path: '/admin/feedbacks',
+          element: (
+            <MainLayoutAdmin>
+              <ManageFeedbacks />
+            </MainLayoutAdmin>
+          )
+        },
+        {
+          path: '/admin/notifications',
+          element: (
+            <MainLayoutAdmin>
+              <ManageNotifications />
             </MainLayoutAdmin>
           )
         }

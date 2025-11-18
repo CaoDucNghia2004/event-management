@@ -11,8 +11,8 @@ export const GET_REGISTRATIONS_BY_USER = gql`
       queue_order
       current_status
       cancel_reason
-      is_attended
       code_roll_call
+      is_attended
       status_history {
         name
         sequence
@@ -23,6 +23,8 @@ export const GET_REGISTRATIONS_BY_USER = gql`
         title
         start_date
         end_date
+        current_status
+        image_url
         location {
           name
           address
@@ -30,6 +32,27 @@ export const GET_REGISTRATIONS_BY_USER = gql`
       }
       created_at
       updated_at
+    }
+  }
+`
+
+export const GET_REGISTRATIONS_BY_EVENT = gql`
+  query GetRegistrationsByEvent {
+    registrations {
+      id
+      user_id
+      event_id
+      registration_at
+      queue_order
+      current_status
+      code_roll_call
+      is_attended
+      user {
+        id
+        name
+        email
+      }
+      created_at
     }
   }
 `

@@ -3,7 +3,7 @@ import { gql } from '@apollo/client/core'
 export const GET_HISTORY_POINTS_BY_USER = gql`
   query GetHistoryPointsByUser($user_id: String!) {
     historyPointsByUser(user_id: $user_id) {
-      id
+      _id
       user_id
       event_id
       old_point

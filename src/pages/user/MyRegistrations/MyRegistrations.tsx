@@ -1,18 +1,25 @@
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_REGISTRATIONS_BY_USER } from '../../../graphql/queries/registrationQueries'
 import { CANCEL_REGISTRATION } from '../../../graphql/mutations/registrationMutations'
+import { GET_FEEDBACKS_BY_USER } from '../../../graphql/queries/feedbackQueries'
 
 import { useAuthStore } from '../../../store/useAuthStore'
 import userApiRequests from '../../../apiRequests/user'
 import { getUserIdFromToken } from '../../../utils/utils'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import { Calendar, MapPin, Clock, XCircle, CheckCircle, AlertCircle } from 'lucide-react'
+import { Calendar, MapPin, Clock, XCircle, CheckCircle, AlertCircle, Search, Star } from 'lucide-react'
 import { FiEye } from 'react-icons/fi'
-import { toast } from 'react-toastify'
-import { useState, useEffect } from 'react'
+import { BiFilterAlt } from 'react-icons/bi'
+import { MdCheckCircle, MdCancel } from 'react-icons/md'
+import { IoChevronDown } from 'react-icons/io5'
+import { HiViewGrid } from 'react-icons/hi'
+import Swal from 'sweetalert2'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import type { Registration, RegistrationsByUserData } from '../../../types/registration.types'
+import type { FeedbacksByUserData } from '../../../types/feedback.types'
+import FeedbackModal from '../../../components/FeedbackModal'
 
 export default function MyRegistrations() {
   const { user, setUser } = useAuthStore()
@@ -23,11 +30,40 @@ export default function MyRegistrations() {
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
   const [cancelReason, setCancelReason] = useState('')
 
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('ACTIVE') // ACTIVE = chưa hủy, CANCELLED = đã hủy, ALL = tất cả
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Feedback modal states
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [selectedFeedbackRegistration, setSelectedFeedbackRegistration] = useState<Registration | null>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   // Query danh sách đăng ký
   const { loading, error, data, refetch } = useQuery<RegistrationsByUserData>(GET_REGISTRATIONS_BY_USER, {
     variables: { user_id: userId },
     skip: !userId,
     fetchPolicy: 'network-only' // Luôn fetch data mới từ server
+  })
+
+  // Query danh sách feedbacks của user
+  const { data: feedbacksData, refetch: refetchFeedbacks } = useQuery<FeedbacksByUserData>(GET_FEEDBACKS_BY_USER, {
+    variables: { user_id: userId },
+    skip: !userId,
+    fetchPolicy: 'network-only'
   })
 
   // Debug log
@@ -45,10 +81,43 @@ export default function MyRegistrations() {
     }
   }, [data])
 
+  // Filter and search logic - PHẢI ĐẶT TRƯỚC các early returns
+  const registrations = data?.registrationsByUser || []
+  const filteredRegistrations = useMemo(() => {
+    return registrations.filter((registration) => {
+      // Search filter
+      const matchesSearch = registration.event?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+
+      // Status filter
+      let matchesStatus = true
+      if (statusFilter === 'ACTIVE') {
+        // Chưa hủy = CONFIRMED hoặc WAITING
+        matchesStatus = registration.current_status === 'CONFIRMED' || registration.current_status === 'WAITING'
+      } else if (statusFilter === 'CANCELLED') {
+        // Đã hủy
+        matchesStatus = registration.current_status === 'CANCELLED'
+      }
+      // statusFilter === 'ALL' thì matchesStatus = true (hiển thị tất cả)
+
+      return matchesSearch && matchesStatus
+    })
+  }, [registrations, searchQuery, statusFilter])
+
+  // Helper function: Check if registration has feedback
+  const hasFeedback = (registrationId: string) => {
+    return feedbacksData?.feedbacksByUser.some((feedback) => feedback.registration_id === registrationId) || false
+  }
+
   // Mutation hủy đăng ký
   const [cancelRegistration] = useMutation(CANCEL_REGISTRATION, {
     onCompleted: async () => {
-      toast.success('✅ Hủy đăng ký thành công!')
+      await Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: 'Hủy đăng ký thành công!',
+        showConfirmButton: false,
+        timer: 1500
+      })
       setShowCancelModal(false)
       setSelectedRegistration(null)
       setCancelReason('')
@@ -82,11 +151,26 @@ export default function MyRegistrations() {
       }
 
       if (errorMessage.includes('đã bị hủy')) {
-        toast.warning('⚠️ Đăng ký này đã bị hủy rồi!')
+        Swal.fire({
+          icon: 'warning',
+          title: 'Thông báo',
+          text: 'Đăng ký này đã bị hủy rồi!',
+          confirmButtonText: 'Đóng'
+        })
       } else if (errorMessage.includes('48') || errorMessage.includes('2 ngày')) {
-        toast.error('⚠️ Hủy muộn sẽ bị trừ 3 điểm uy tín!')
+        Swal.fire({
+          icon: 'warning',
+          title: 'Cảnh báo',
+          text: 'Hủy muộn sẽ bị trừ 3 điểm uy tín!',
+          confirmButtonText: 'Đóng'
+        })
       } else {
-        toast.error(`❌ ${errorMessage}`)
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: errorMessage,
+          confirmButtonText: 'Đóng'
+        })
       }
       setCancellingId(null)
     }
@@ -107,6 +191,15 @@ export default function MyRegistrations() {
         cancel_reason: cancelReason || null
       }
     })
+  }
+
+  const handleFeedbackClick = (registration: Registration) => {
+    setSelectedFeedbackRegistration(registration)
+    setShowFeedbackModal(true)
+  }
+
+  const handleFeedbackSuccess = () => {
+    refetchFeedbacks()
   }
 
   const formatDateTime = (dateString: string) => {
@@ -165,8 +258,6 @@ export default function MyRegistrations() {
       </div>
     )
   }
-
-  const registrations = data?.registrationsByUser || []
 
   return (
     <>
@@ -247,6 +338,136 @@ export default function MyRegistrations() {
             <p className='text-lg text-gray-600'>Quản lý các sự kiện bạn đã đăng ký tham gia</p>
           </div>
 
+          {/* Search and Filter Section */}
+          {registrations.length > 0 && (
+            <div className='bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-100'>
+              {/* Search Bar */}
+              <div className='mb-6'>
+                <div className='relative'>
+                  <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
+                  <input
+                    type='text'
+                    placeholder='Tìm kiếm sự kiện theo tên...'
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className='w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-base'
+                  />
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className='flex flex-wrap gap-4'>
+                {/* Status Filter - Custom Dropdown */}
+                <div className='flex-1 min-w-[200px]'>
+                  <label className='block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2'>
+                    <BiFilterAlt className='w-5 h-5' />
+                    Lọc theo trạng thái
+                  </label>
+                  <div className='relative' ref={dropdownRef}>
+                    {/* Selected Value Display */}
+                    <button
+                      type='button'
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className='w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-base bg-white text-left flex items-center justify-between hover:border-gray-300'
+                    >
+                      <span className='flex items-center gap-2'>
+                        {statusFilter === 'ACTIVE' && (
+                          <>
+                            <MdCheckCircle className='w-5 h-5 text-green-600' />
+                            <span>Sự kiện đang hoạt động - Nhớ tham gia nhé!</span>
+                          </>
+                        )}
+                        {statusFilter === 'CANCELLED' && (
+                          <>
+                            <MdCancel className='w-5 h-5 text-red-600' />
+                            <span>Đã hủy đăng ký</span>
+                          </>
+                        )}
+                        {statusFilter === 'ALL' && (
+                          <>
+                            <HiViewGrid className='w-5 h-5 text-blue-600' />
+                            <span>Tất cả</span>
+                          </>
+                        )}
+                      </span>
+                      <IoChevronDown
+                        className={`w-5 h-5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {/* Dropdown Options */}
+                    {isDropdownOpen && (
+                      <div className='absolute z-10 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden'>
+                        <button
+                          type='button'
+                          onClick={() => {
+                            setStatusFilter('ACTIVE')
+                            setIsDropdownOpen(false)
+                          }}
+                          className={`w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-blue-50 transition-colors ${
+                            statusFilter === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          <MdCheckCircle className='w-5 h-5 text-green-600' />
+                          <span>Sự kiện đang hoạt động - Nhớ tham gia nhé!</span>
+                        </button>
+                        <button
+                          type='button'
+                          onClick={() => {
+                            setStatusFilter('CANCELLED')
+                            setIsDropdownOpen(false)
+                          }}
+                          className={`w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-blue-50 transition-colors ${
+                            statusFilter === 'CANCELLED' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          <MdCancel className='w-5 h-5 text-red-600' />
+                          <span>Đã hủy đăng ký</span>
+                        </button>
+                        <button
+                          type='button'
+                          onClick={() => {
+                            setStatusFilter('ALL')
+                            setIsDropdownOpen(false)
+                          }}
+                          className={`w-full px-4 py-3 text-left flex items-center gap-2 hover:bg-blue-50 transition-colors ${
+                            statusFilter === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          <HiViewGrid className='w-5 h-5 text-blue-600' />
+                          <span>Tất cả</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reset Button */}
+                {(searchQuery || statusFilter !== 'ACTIVE') && (
+                  <div className='flex items-end'>
+                    <button
+                      onClick={() => {
+                        setSearchQuery('')
+                        setStatusFilter('ACTIVE')
+                      }}
+                      className='px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all'
+                    >
+                      Xóa bộ lọc
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Results Count */}
+              <div className='mt-4 pt-4 border-t border-gray-200'>
+                <p className='text-sm text-gray-600'>
+                  Hiển thị <span className='font-bold text-blue-600'>{filteredRegistrations.length}</span> /{' '}
+                  {registrations.length} đăng ký
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Registrations List */}
           {registrations.length === 0 ? (
             <div className='bg-white rounded-3xl shadow-xl p-16 text-center border border-gray-100'>
@@ -260,9 +481,24 @@ export default function MyRegistrations() {
                 Xem sự kiện
               </button>
             </div>
+          ) : filteredRegistrations.length === 0 ? (
+            <div className='bg-white rounded-3xl shadow-xl p-16 text-center border border-gray-100'>
+              <Search className='w-20 h-20 text-gray-300 mx-auto mb-6' />
+              <h3 className='text-2xl font-bold text-gray-900 mb-3'>Không tìm thấy kết quả</h3>
+              <p className='text-gray-500 mb-8 text-lg'>Không có sự kiện nào phù hợp với bộ lọc của bạn.</p>
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setStatusFilter('ACTIVE')
+                }}
+                className='px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl'
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
           ) : (
             <div className='space-y-6'>
-              {registrations.map((registration) => {
+              {filteredRegistrations.map((registration) => {
                 const statusBadge = getStatusBadge(registration.current_status)
                 const StatusIcon = statusBadge.icon
 
@@ -388,24 +624,64 @@ export default function MyRegistrations() {
                       )}
 
                       {/* Actions */}
-                      <div className='flex gap-4 pt-6 border-t border-gray-200'>
+                      <div className='flex flex-wrap gap-4 pt-6 border-t border-gray-200'>
                         <button
                           onClick={() => navigate(`/events/${registration.event_id}`)}
-                          className='w-48 md:w-56 flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg text-base'
+                          className='flex-1 min-w-[200px] flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg text-base'
                         >
                           <FiEye className='w-5 h-5' />
                           <span>Xem chi tiết</span>
                         </button>
 
-                        {registration.current_status !== 'CANCELLED' && (
-                          <button
-                            onClick={() => handleCancelClick(registration)}
-                            disabled={!!cancellingId}
-                            className='px-8 py-3.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-xl hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-base'
-                          >
-                            {cancellingId === registration.id ? 'Đang hủy...' : 'Hủy đăng ký'}
-                          </button>
+                        {/* Nút Đánh giá - Chỉ hiển thị khi đã điểm danh (is_attended = true) */}
+                        {registration.is_attended && (
+                          <>
+                            {hasFeedback(registration.id) ? (
+                              <button
+                                disabled
+                                className='flex-1 min-w-[200px] flex items-center justify-center gap-2 px-4 py-3.5 bg-green-100 text-green-700 font-semibold rounded-xl cursor-not-allowed text-base border-2 border-green-300'
+                              >
+                                <Star className='w-5 h-5 fill-green-600' />
+                                <span>Đã đánh giá</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleFeedbackClick(registration)}
+                                className='flex-1 min-w-[200px] flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all shadow-md hover:shadow-lg text-base'
+                              >
+                                <Star className='w-5 h-5' />
+                                <span>Đánh giá</span>
+                              </button>
+                            )}
+                          </>
                         )}
+
+                        {/* Chỉ hiển thị nút Hủy nếu: chưa bị hủy VÀ chưa điểm danh VÀ sự kiện đang MỞ ĐĂNG KÝ (OPEN) VÀ chưa bắt đầu */}
+                        {(() => {
+                          const now = new Date()
+                          const eventStarted =
+                            registration.event?.start_date && new Date(registration.event.start_date) <= now
+                          const eventStatus = registration.event?.current_status
+
+                          // CHỈ cho hủy khi sự kiện đang OPEN (đang mở đăng ký)
+                          const canCancel =
+                            registration.current_status !== 'CANCELLED' &&
+                            !registration.is_attended &&
+                            !eventStarted &&
+                            eventStatus === 'OPEN'
+
+                          return (
+                            canCancel && (
+                              <button
+                                onClick={() => handleCancelClick(registration)}
+                                disabled={!!cancellingId}
+                                className='flex-1 min-w-[200px] px-8 py-3.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-xl hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-base'
+                              >
+                                {cancellingId === registration.id ? 'Đang hủy...' : 'Hủy đăng ký'}
+                              </button>
+                            )
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -415,6 +691,21 @@ export default function MyRegistrations() {
           )}
         </div>
       </div>
+
+      {/* Feedback Modal */}
+      {selectedFeedbackRegistration && (
+        <FeedbackModal
+          isOpen={showFeedbackModal}
+          onClose={() => {
+            setShowFeedbackModal(false)
+            setSelectedFeedbackRegistration(null)
+          }}
+          registrationId={selectedFeedbackRegistration.id}
+          eventId={selectedFeedbackRegistration.event_id}
+          eventTitle={selectedFeedbackRegistration.event?.title || 'Sự kiện'}
+          onSuccess={handleFeedbackSuccess}
+        />
+      )}
     </>
   )
 }
