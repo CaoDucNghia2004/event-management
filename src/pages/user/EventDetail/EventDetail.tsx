@@ -2,12 +2,13 @@ import { useParams, useNavigate } from 'react-router'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_EVENT_BY_ID } from '../../../graphql/queries/eventQueries'
 import { CREATE_REGISTRATION } from '../../../graphql/mutations/registrationMutations'
+import config from '../../../constants/config'
 
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Calendar, MapPin, Users, Clock, Tag, ArrowLeft, CheckCircle, XCircle, AlertCircle, User } from 'lucide-react'
 import { useAuthStore } from '../../../store/useAuthStore'
-import { toast } from 'react-toastify'
+import Swal from 'sweetalert2'
 import { useState } from 'react'
 import RegistrationSuccessModal from '../../../components/RegistrationSuccessModal'
 import { getUserIdFromToken } from '../../../utils/utils'
@@ -87,33 +88,73 @@ export default function EventDetail() {
 
       // Xử lý token expired
       if (errorMessage.includes('Token has expired') || errorMessage.includes('expired')) {
-        toast.error('⏰ Phiên đăng nhập đã hết hạn! Vui lòng đăng nhập lại.')
-        setTimeout(() => {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Phiên đăng nhập hết hạn',
+          text: 'Phiên đăng nhập đã hết hạn! Vui lòng đăng nhập lại.',
+          confirmButtonText: 'Đóng'
+        }).then(() => {
           navigate('/login')
-        }, 1500)
+        })
         return
       }
 
       if (errorMessage.includes('Điểm uy tín') || errorMessage.includes('reputation')) {
-        toast.error('❌ Điểm uy tín của bạn quá thấp (< 50). Vui lòng tham gia thêm sự kiện để tăng điểm!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Điểm uy tín thấp',
+          text: 'Điểm uy tín của bạn quá thấp (< 50). Vui lòng tham gia thêm sự kiện để tăng điểm!',
+          confirmButtonText: 'Đóng'
+        })
       } else if (errorMessage.includes('đã đăng ký') || errorMessage.includes('already registered')) {
-        toast.warning('⚠️ Bạn đã đăng ký sự kiện này rồi!')
+        Swal.fire({
+          icon: 'warning',
+          title: 'Thông báo',
+          text: 'Bạn đã đăng ký sự kiện này rồi!',
+          confirmButtonText: 'Đóng'
+        })
       } else if (errorMessage.includes('đã đầy') || errorMessage.includes('full')) {
-        toast.error('❌ Sự kiện đã đầy! Không còn chỗ trống.')
+        Swal.fire({
+          icon: 'error',
+          title: 'Sự kiện đã đầy',
+          text: 'Sự kiện đã đầy! Không còn chỗ trống.',
+          confirmButtonText: 'Đóng'
+        })
       } else if (errorMessage.includes('không tồn tại') || errorMessage.includes('not found')) {
-        toast.error('❌ Sự kiện không tồn tại!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: 'Sự kiện không tồn tại!',
+          confirmButtonText: 'Đóng'
+        })
       } else if (errorMessage.includes('OPEN')) {
-        toast.error('❌ Sự kiện chưa mở đăng ký!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Chưa mở đăng ký',
+          text: 'Sự kiện chưa mở đăng ký!',
+          confirmButtonText: 'Đóng'
+        })
       } else {
-        toast.error(errorMessage || 'Đăng ký thất bại! Vui lòng thử lại.')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: errorMessage || 'Đăng ký thất bại! Vui lòng thử lại.',
+          confirmButtonText: 'Đóng'
+        })
       }
     }
   })
 
   const handleRegister = async () => {
     if (!user) {
-      toast.error('Vui lòng đăng nhập để đăng ký sự kiện!')
-      navigate('/login')
+      Swal.fire({
+        icon: 'warning',
+        title: 'Chưa đăng nhập',
+        text: 'Vui lòng đăng nhập để đăng ký sự kiện!',
+        confirmButtonText: 'Đóng'
+      }).then(() => {
+        navigate('/login')
+      })
       return
     }
 
@@ -125,8 +166,40 @@ export default function EventDetail() {
     console.log('Event ID:', id)
 
     if (!userId) {
-      toast.error('Không thể xác định user_id! Vui lòng đăng nhập lại.')
-      navigate('/login')
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: 'Không thể xác định user_id! Vui lòng đăng nhập lại.',
+        confirmButtonText: 'Đóng'
+      }).then(() => {
+        navigate('/login')
+      })
+      return
+    }
+
+    // Confirmation dialog
+    const result = await Swal.fire({
+      title: 'Xác nhận đăng ký',
+      html: `
+        <div class="text-left">
+          <p class="text-gray-700 mb-3">Bạn có chắc chắn muốn đăng ký sự kiện này không?</p>
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <p class="font-semibold text-gray-900 mb-2">${event?.title || 'Sự kiện'}</p>
+            <p class="text-sm text-gray-600">HỘI TRƯỜNG ${event?.location?.name || 'N/A'}</p>
+            <p class="text-sm text-gray-600">${event?.start_date ? format(new Date(event.start_date), 'dd/MM/yyyy HH:mm', { locale: vi }) : 'N/A'}</p>
+          </div>
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Đăng ký ngay',
+      cancelButtonText: 'Hủy',
+      reverseButtons: true
+    })
+
+    if (!result.isConfirmed) {
       return
     }
 
@@ -231,7 +304,11 @@ export default function EventDetail() {
             {/* Image */}
             <div className='relative h-96 bg-gradient-to-br from-blue-100 to-indigo-100'>
               {event.image_url ? (
-                <img src={event.image_url} alt={event.title} className='w-full h-full object-cover' />
+                <img
+                  src={`${config.baseUrl}${event.image_url}`}
+                  alt={event.title}
+                  className='w-full h-full object-cover'
+                />
               ) : (
                 <div className='w-full h-full flex items-center justify-center text-9xl'>🎓</div>
               )}

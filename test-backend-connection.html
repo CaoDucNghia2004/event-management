@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Backend Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        input {
+            padding: 8px;
+            width: 300px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test Backend Connection</h1>
+    
+    <div class="test-section">
+        <h2>1. Cấu hình Backend URL</h2>
+        <label>Backend URL:</label><br>
+        <input type="text" id="backendUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+        <button onclick="saveUrl()">Lưu URL</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test REST API</h2>
+        <button onclick="testRestApi()">Test /api/v1/auth/me</button>
+        <div id="restResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test GraphQL Endpoint</h2>
+        <button onclick="testGraphQL()">Test GraphQL Query</button>
+        <div id="graphqlResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test CORS</h2>
+        <button onclick="testCORS()">Test CORS Headers</button>
+        <div id="corsResult"></div>
+    </div>
+
+    <script>
+        let backendUrl = 'http://localhost:8000';
+
+        function saveUrl() {
+            backendUrl = document.getElementById('backendUrl').value;
+            localStorage.setItem('backendUrl', backendUrl);
+            alert('URL đã được lưu: ' + backendUrl);
+        }
+
+        // Load saved URL
+        window.onload = function() {
+            const saved = localStorage.getItem('backendUrl');
+            if (saved) {
+                backendUrl = saved;
+                document.getElementById('backendUrl').value = saved;
+            }
+        }
+
+        async function testRestApi() {
+            const result = document.getElementById('restResult');
+            result.innerHTML = '<p>Đang test...</p>';
+            
+            try {
+                const response = await fetch(`${backendUrl}/api/v1/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                result.innerHTML = `
+                    <p class="success">✅ Kết nối thành công!</p>
+                    <p>Status: ${response.status}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <p class="error">❌ Lỗi kết nối!</p>
+                    <pre>${error.message}</pre>
+                    <p>Kiểm tra:</p>
+                    <ul>
+                        <li>Backend có đang chạy không?</li>
+                        <li>URL có đúng không?</li>
+                        <li>CORS có được cấu hình không?</li>
+                    </ul>
+                `;
+            }
+        }
+
+        async function testGraphQL() {
+            const result = document.getElementById('graphqlResult');
+            result.innerHTML = '<p>Đang test GraphQL...</p>';
+            
+            const query = `
+                query {
+                    events {
+                        id
+                        title
+                    }
+                }
+            `;
+            
+            try {
+                const response = await fetch(`${backendUrl}/graphql`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+                
+                const data = await response.json();
+                result.innerHTML = `
+                    <p class="success">✅ GraphQL hoạt động!</p>
+                    <p>Status: ${response.status}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <p class="error">❌ Lỗi GraphQL!</p>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testCORS() {
+            const result = document.getElementById('corsResult');
+            result.innerHTML = '<p>Đang test CORS...</p>';
+            
+            try {
+                const response = await fetch(`${backendUrl}/graphql`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                
+                result.innerHTML = `
+                    <p class="success">✅ CORS Response Headers:</p>
+                    <pre>${JSON.stringify(headers, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <p class="error">❌ Lỗi CORS!</p>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

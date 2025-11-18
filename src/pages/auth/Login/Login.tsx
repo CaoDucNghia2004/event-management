@@ -3,7 +3,6 @@ import { FiMail, FiLock } from 'react-icons/fi'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router'
-import { toast } from 'react-toastify'
 import {
   LoginBody,
   type LoginBodyType,
@@ -13,6 +12,8 @@ import {
 import authApiRequests from '../../../apiRequests/auth'
 import { setAccessTokenToLS } from '../../../utils/utils'
 import { useAuthStore } from '../../../store/useAuthStore'
+import Swal from 'sweetalert2'
+import { translateMessage } from '../../../utils/translateMessage'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -79,9 +80,20 @@ export default function Login() {
         // Kiểm tra tài khoản đã được kích hoạt chưa
         if (!account.is_active) {
           // KHÔNG lưu user vào store nếu chưa active
-          toast.info('Tài khoản chưa được xác thực. Đang gửi mã kích hoạt...')
+          Swal.fire({
+            icon: 'info',
+            title: 'Thông báo',
+            text: 'Tài khoản chưa được xác thực. Đang gửi mã kích hoạt...',
+            showConfirmButton: false,
+            timer: 2000
+          })
           await authApiRequests.sentCode()
-          toast.success(`Mã xác thực đã được gửi tới ${account.email}`)
+          Swal.fire({
+            icon: 'success',
+            title: 'Thành công!',
+            text: `Mã xác thực đã được gửi tới ${account.email}`,
+            confirmButtonText: 'Đóng'
+          })
           setStep('verify')
           setCooldown(180)
           return
@@ -90,10 +102,21 @@ export default function Login() {
         // Nếu tài khoản đã active thì mới lưu user
         setUser(account)
 
-        toast.success('Đăng nhập thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đăng nhập thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
         navigate('/')
       } else {
-        toast.error(res.data.message || 'Đăng nhập thất bại!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: res.data.message || 'Đăng nhập thất bại!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
       const apiErrors = error?.response?.data?.message
@@ -105,7 +128,14 @@ export default function Login() {
           }
         })
       } else {
-        toast.error(error?.response?.data?.message || 'Đăng nhập thất bại!')
+        const errorMessage = translateMessage(error?.response?.data?.message) || 'Đăng nhập thất bại!'
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: errorMessage,
+          confirmButtonText: 'Đóng'
+        })
       }
 
       console.error(error)
@@ -125,17 +155,33 @@ export default function Login() {
           setUser(account)
         }
 
-        toast.success('Xác thực thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Xác thực thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
         navigate('/')
       } else {
-        toast.error(res.data.message || 'Xác thực thất bại!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: res.data.message || 'Xác thực thất bại!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
       const apiErrors = error?.response?.data?.message
       if (apiErrors) {
         setErrorCode('code', { message: apiErrors })
       } else {
-        toast.error('Mã xác thực không hợp lệ!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: 'Mã xác thực không hợp lệ!',
+          confirmButtonText: 'Đóng'
+        })
       }
     }
   }
@@ -146,17 +192,32 @@ export default function Login() {
     try {
       const res = await authApiRequests.sentCode()
       if (res.status === 200) {
-        toast.success(`Mã xác thực đã được gửi lại tới ${email}`)
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: `Mã xác thực đã được gửi lại tới ${email}`,
+          confirmButtonText: 'Đóng'
+        })
         setCooldown(180)
       } else {
-        toast.error('Không thể gửi lại mã, vui lòng thử lại!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: 'Không thể gửi lại mã, vui lòng thử lại!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
       const status = error?.response?.status
       const message = error?.response?.data?.message
 
       if (status === 429) {
-        toast.warning(message || 'Vui lòng chờ trước khi gửi lại mã.')
+        Swal.fire({
+          icon: 'warning',
+          title: 'Cảnh báo!',
+          text: message || 'Vui lòng chờ trước khi gửi lại mã.',
+          confirmButtonText: 'Đóng'
+        })
         const match = message?.match(/([\d.]+)\s*minutes/i)
         if (match) {
           const minutes = parseFloat(match[1])
@@ -165,7 +226,12 @@ export default function Login() {
           setCooldown(180)
         }
       } else {
-        toast.error('Lỗi khi gửi lại mã!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: 'Lỗi khi gửi lại mã!',
+          confirmButtonText: 'Đóng'
+        })
       }
 
       console.error(error)

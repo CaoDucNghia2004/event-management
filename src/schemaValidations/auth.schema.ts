@@ -53,6 +53,7 @@ export const LoginResponse = z.object({
   message: z.string(),
   data: z.object({
     account: z.object({
+      id: z.string(),
       email: z.string(),
       name: z.string(),
       avatar: z.string().nullable(),
@@ -144,6 +145,7 @@ export const RefreshResponse = z.object({
   message: z.string(),
   data: z.object({
     account: z.object({
+      id: z.string(),
       email: z.string(),
       name: z.string(),
       avatar: z.string().nullable(),

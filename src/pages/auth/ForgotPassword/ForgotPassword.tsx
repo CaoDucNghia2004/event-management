@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { FiMail, FiLock } from 'react-icons/fi'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router'
 import authApiRequests from '../../../apiRequests/auth'
 import {
@@ -11,6 +10,8 @@ import {
   ResetPasswordBody,
   type ResetPasswordBodyType
 } from '../../../schemaValidations/auth.schema'
+import Swal from 'sweetalert2'
+import { translateMessage } from '../../../utils/translateMessage'
 
 export default function ForgotPassword() {
   const navigate = useNavigate()
@@ -58,16 +59,31 @@ export default function ForgotPassword() {
       console.log('Forgot response:', res)
 
       if (res.status === 200) {
-        toast.success('Mã khôi phục đã được gửi đến email của bạn!')
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Mã khôi phục đã được gửi đến email của bạn!',
+          confirmButtonText: 'Đóng'
+        })
         setStep('reset')
         setCooldown(180)
       } else {
-        toast.error(res.data?.message || 'Không thể gửi mã khôi phục!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: res.data?.message || 'Không thể gửi mã khôi phục!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
-      const message = error?.response?.data?.message
+      const message = translateMessage(error?.response?.data?.message) || 'Lỗi khi gửi mã khôi phục!'
       setError('email', { message })
-      toast.error(message || 'Lỗi khi gửi mã khôi phục!')
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: message,
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 
@@ -77,10 +93,20 @@ export default function ForgotPassword() {
       console.log('Reset response:', res)
 
       if (res.status === 200 || res.status === 201) {
-        toast.success('Đặt lại mật khẩu thành công! Hãy đăng nhập lại.')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đặt lại mật khẩu thành công! Hãy đăng nhập lại.',
+          confirmButtonText: 'Đóng'
+        })
         navigate('/login')
       } else {
-        toast.error(res.data?.message || 'Không thể đặt lại mật khẩu!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: res.data?.message || 'Không thể đặt lại mật khẩu!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
       console.error('Reset error:', error)
@@ -92,7 +118,12 @@ export default function ForgotPassword() {
           }
         })
       } else {
-        toast.error(apiErrors || 'Lỗi khi đặt lại mật khẩu!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: apiErrors || 'Lỗi khi đặt lại mật khẩu!',
+          confirmButtonText: 'Đóng'
+        })
       }
     }
   }
@@ -102,13 +133,28 @@ export default function ForgotPassword() {
     try {
       const res = await authApiRequests.forgotPassword({ email })
       if (res.status === 200) {
-        toast.success(`Mã khôi phục đã được gửi lại tới ${email}`)
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: `Mã khôi phục đã được gửi lại tới ${email}`,
+          confirmButtonText: 'Đóng'
+        })
         setCooldown(180)
       } else {
-        toast.error('Không thể gửi lại mã!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: 'Không thể gửi lại mã!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Lỗi khi gửi lại mã!')
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: error?.response?.data?.message || 'Lỗi khi gửi lại mã!',
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 

@@ -1,5 +1,6 @@
 import { X, MapPin, Calendar, Users, Tag, User, Clock, Image as ImageIcon } from 'lucide-react'
 import type { Event } from '../../../types/event.types'
+import config from '../../../constants/config'
 
 interface EventDetailModalProps {
   event: Event
@@ -35,7 +36,7 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
           {event.image_url && (
             <div className='rounded-lg overflow-hidden border border-gray-200'>
               <img
-                src={event.image_url}
+                src={`${config.baseUrl}${event.image_url}`}
                 alt={event.title}
                 className='w-full h-64 object-cover'
                 onError={(e) => {

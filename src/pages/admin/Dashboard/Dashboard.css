@@ -1,0 +1,26 @@
+/* Dashboard Custom Spacing */
+:root {
+  --spacing: 0.25rem; /* Base spacing unit: 4px */
+}
+
+/* Quản lý nhanh & Chức năng khác */
+.dashboard-card-p-6 {
+  padding: calc(var(--spacing) * 7);
+}
+
+/* Trạng thái sự kiện */
+.dashboard-event-status {
+  padding-left: calc(var(--spacing) * 6);
+  padding-right: calc(var(--spacing) * 6);
+  padding-top: calc(var(--spacing) * 6);
+  padding-bottom: calc(var(--spacing) * 12);
+}
+
+/* Thống kê phê duyệt */
+.dashboard-approval-stats {
+  padding-left: calc(var(--spacing) * 6);
+  padding-right: calc(var(--spacing) * 6);
+  padding-top: calc(var(--spacing) * 4);
+  padding-bottom: calc(var(--spacing) * 3);
+}
+

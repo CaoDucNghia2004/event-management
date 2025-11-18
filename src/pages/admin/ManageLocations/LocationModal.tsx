@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@apollo/client/react'
 import { CREATE_LOCATION, UPDATE_LOCATION } from '../../../graphql/mutations/locationMutations'
 import { MapPin, Building2, Map, Users } from 'lucide-react'
+import Swal from 'sweetalert2'
 
 interface LocationDetail {
   id: string
@@ -28,21 +29,41 @@ export default function LocationModal({ location, onClose }: LocationModalProps)
 
   const [createLocation, { loading: creating }] = useMutation(CREATE_LOCATION, {
     onCompleted: () => {
-      alert('Thêm địa điểm thành công!')
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: 'Thêm địa điểm thành công!',
+        confirmButtonText: 'Đóng'
+      })
       onClose()
     },
     onError: (error) => {
-      alert('Lỗi: ' + error.message)
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: error.message,
+        confirmButtonText: 'Đóng'
+      })
     }
   })
 
   const [updateLocation, { loading: updating }] = useMutation(UPDATE_LOCATION, {
     onCompleted: () => {
-      alert('Cập nhật địa điểm thành công!')
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: 'Cập nhật địa điểm thành công!',
+        confirmButtonText: 'Đóng'
+      })
       onClose()
     },
     onError: (error) => {
-      alert('Lỗi: ' + error.message)
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: error.message,
+        confirmButtonText: 'Đóng'
+      })
     }
   })
 

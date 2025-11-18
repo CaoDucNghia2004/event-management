@@ -3,7 +3,10 @@ import { useMutation, useQuery } from '@apollo/client/react'
 import { CREATE_EVENT, UPDATE_EVENT } from '../../../graphql/mutations/eventMutations'
 import { GET_ALL_LOCATIONS } from '../../../graphql/queries/locationQueries'
 import type { Event } from '../../../types/event.types'
-import { Calendar, FileText, MapPin, Users, Clock, Tag } from 'lucide-react'
+import { Calendar, FileText, MapPin, Users, Clock, Tag, Upload, X } from 'lucide-react'
+import uploadApiRequests from '../../../apiRequests/upload'
+import config from '../../../constants/config'
+import Swal from 'sweetalert2'
 
 interface EventModalProps {
   event: Event | null
@@ -23,31 +26,58 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
     waiting_capacity: '',
     image_url: ''
   })
+  const [imagePreview, setImagePreview] = useState<string>('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
+  const [dateTimeErrors, setDateTimeErrors] = useState({
+    start_date: '',
+    end_date: ''
+  })
 
   const { data: locationsData } = useQuery(GET_ALL_LOCATIONS)
   const locations = (locationsData as { locations: { id: string; name: string; building?: string }[] })?.locations || []
 
   const [createEvent, { loading: creating }] = useMutation(CREATE_EVENT, {
-    onCompleted: () => {
-      alert('Thêm sự kiện thành công!')
-      onClose()
-    },
-    onError: (error: unknown) => {
-      const err = error as { errors?: Array<{ details?: { message?: string } }>; message?: string }
-      const errorMessage = err?.errors?.[0]?.details?.message || err?.message || 'Không thể tạo sự kiện'
-      alert('Lỗi: ' + errorMessage)
+    onError: (error: {
+      graphQLErrors?: Array<{ extensions?: { reason?: string }; message?: string }>
+      errors?: Array<{ details?: { message?: string } }>
+      message?: string
+    }) => {
+      // Try multiple error message locations
+      const errorMessage =
+        error?.graphQLErrors?.[0]?.extensions?.reason ||
+        error?.graphQLErrors?.[0]?.message ||
+        error?.errors?.[0]?.details?.message ||
+        error?.message ||
+        'Không thể tạo sự kiện'
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: errorMessage,
+        confirmButtonText: 'Đóng'
+      })
     }
   })
 
   const [updateEvent, { loading: updating }] = useMutation(UPDATE_EVENT, {
-    onCompleted: () => {
-      alert('Cập nhật sự kiện thành công!')
-      onClose()
-    },
-    onError: (error: unknown) => {
-      const err = error as { errors?: Array<{ details?: { message?: string } }>; message?: string }
-      const errorMessage = err?.errors?.[0]?.details?.message || err?.message || 'Không thể cập nhật sự kiện'
-      alert('Lỗi: ' + errorMessage)
+    onError: (error: {
+      graphQLErrors?: Array<{ extensions?: { reason?: string }; message?: string }>
+      errors?: Array<{ details?: { message?: string } }>
+      message?: string
+    }) => {
+      // Try multiple error message locations
+      const errorMessage =
+        error?.graphQLErrors?.[0]?.extensions?.reason ||
+        error?.graphQLErrors?.[0]?.message ||
+        error?.errors?.[0]?.details?.message ||
+        error?.message ||
+        'Không thể cập nhật sự kiện'
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: errorMessage,
+        confirmButtonText: 'Đóng'
+      })
     }
   })
 
@@ -65,11 +95,86 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
         waiting_capacity: event.waiting_capacity?.toString() || '',
         image_url: event.image_url || ''
       })
+      // Set preview for existing image
+      if (event.image_url) {
+        setImagePreview(`${config.baseUrl}${event.image_url}`)
+      }
     }
   }, [event])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: 'Chỉ chấp nhận file ảnh (JPG, PNG, WEBP)!',
+        confirmButtonText: 'Đóng'
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: 'Kích thước ảnh không được vượt quá 5MB!',
+        confirmButtonText: 'Đóng'
+      })
+      return
+    }
+
+    // Show preview and store file for later upload
+    const previewUrl = URL.createObjectURL(file)
+    setImagePreview(previewUrl)
+    setSelectedImageFile(file)
+  }
+
+  const handleRemoveImage = () => {
+    setImagePreview('')
+    setSelectedImageFile(null)
+    setFormData((prev) => ({ ...prev, image_url: '' }))
+  }
+
+  // Validate datetime
+  const validateDateTime = (startDate: string, endDate: string) => {
+    const errors = { start_date: '', end_date: '' }
+    const now = new Date()
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+
+    // Check if start date is in the past
+    if (start <= now) {
+      errors.start_date = 'Thời gian bắt đầu phải sau thời điểm hiện tại'
+    }
+
+    // Check if end date is after start date
+    if (end <= start) {
+      errors.end_date = 'Thời gian kết thúc phải sau thời gian bắt đầu'
+    }
+
+    setDateTimeErrors(errors)
+    return !errors.start_date && !errors.end_date
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    // Validate datetime before submitting
+    if (!validateDateTime(formData.start_date, formData.end_date)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi thời gian',
+        text: 'Vui lòng kiểm tra lại thời gian bắt đầu và kết thúc',
+        confirmButtonColor: '#3b82f6'
+      })
+      return
+    }
 
     // Format datetime to YYYY-MM-DD HH:mm:ss (remove timezone Z)
     const formatDateTime = (dateStr: string) => {
@@ -83,7 +188,18 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     }
 
-    const variables = {
+    // When updating event: only send image_url if we have a new file selected
+    // If keeping old image (no new file), omit image_url to keep existing value in database
+    const shouldSendImageUrl = event ? selectedImageFile !== null : true // Always send for create, only if changed for update
+
+    // Parse waiting_capacity properly
+    const waitingCapacityValue = formData.waiting_capacity?.trim()
+    const parsedWaitingCapacity =
+      waitingCapacityValue && waitingCapacityValue !== '' && !isNaN(Number(waitingCapacityValue))
+        ? parseInt(waitingCapacityValue)
+        : undefined // Use undefined instead of null to omit field
+
+    const variables: any = {
       title: formData.title,
       description: formData.description || null,
       location_id: formData.location_id,
@@ -92,23 +208,89 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
       organizer: formData.organizer,
       topic: formData.topic || null,
       capacity: parseInt(formData.capacity),
-      waiting_capacity: formData.waiting_capacity ? parseInt(formData.waiting_capacity) : null,
-      image_url: formData.image_url || null
+      ...(shouldSendImageUrl && { image_url: formData.image_url || null })
+    }
+
+    // Only include waiting_capacity if it has a valid value
+    if (parsedWaitingCapacity !== undefined) {
+      variables.waiting_capacity = parsedWaitingCapacity
     }
 
     console.log('Sending event data:', variables) // Debug log
 
-    if (event) {
-      // Update
-      await updateEvent({
-        variables: {
-          id: event.id,
-          ...variables
+    try {
+      let eventId = event?.id
+
+      if (event) {
+        // Update existing event
+        await updateEvent({
+          variables: {
+            id: event.id,
+            ...variables
+          }
+        })
+      } else {
+        // Create new event
+        const result = (await createEvent({ variables })) as { data?: { createEvent?: { id: string } } }
+        eventId = result.data?.createEvent?.id
+        console.log('Create event result:', result)
+        console.log('Event ID:', eventId)
+      }
+
+      // Upload image after event creation/update ONLY if there's a new image file selected
+      // If keeping old image (no new file selected), skip upload
+      if (selectedImageFile && eventId) {
+        console.log('Uploading new image for event:', eventId)
+        setUploadingImage(true)
+        try {
+          const uploadFormData = new FormData()
+          uploadFormData.append('image', selectedImageFile)
+          uploadFormData.append('event_id', eventId)
+
+          await uploadApiRequests.uploadEventImage(uploadFormData)
+          // Don't show upload success toast - will show final success message below
+        } catch (uploadError) {
+          const errorMsg =
+            (uploadError as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Lỗi khi upload ảnh!'
+          Swal.fire({
+            icon: 'error',
+            title: 'Lỗi!',
+            text: errorMsg,
+            confirmButtonText: 'Đóng'
+          })
+          return // Stop here if upload fails
+        } finally {
+          setUploadingImage(false)
         }
+      } else if (!selectedImageFile && imagePreview && !event) {
+        // Creating new event but somehow has preview without file (shouldn't happen)
+        console.warn('Preview exists but no file selected for new event')
+      }
+
+      // Show success message and close modal after everything completes
+      await Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: event ? 'Cập nhật sự kiện thành công!' : 'Thêm sự kiện thành công!',
+        showConfirmButton: false,
+        timer: 1500
       })
-    } else {
-      // Create
-      await createEvent({ variables })
+      onClose()
+    } catch (error) {
+      const errorMessage =
+        (error as any)?.errors?.[0]?.details?.message ||
+        (error as any)?.errors?.[0]?.extensions?.reason ||
+        (error as any)?.errors?.[0]?.message ||
+        (error as any)?.message ||
+        'Đã xảy ra lỗi không xác định'
+      console.error('Error:', errorMessage)
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: errorMessage,
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 
@@ -132,7 +314,7 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                 type='text'
                 required
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                 className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 placeholder='Nhập tên sự kiện...'
               />
@@ -164,8 +346,8 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
               <select
                 required
                 value={formData.location_id}
-                onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
-                className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                onChange={(e) => setFormData((prev) => ({ ...prev, location_id: e.target.value }))}
+                className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white'
               >
                 <option value=''>-- Chọn địa điểm --</option>
                 {locations.map((location: { id: string; name: string; building?: string }) => (
@@ -189,10 +371,21 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                   type='datetime-local'
                   required
                   value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, start_date: e.target.value }))
+                    // Validate on change
+                    if (e.target.value && formData.end_date) {
+                      validateDateTime(e.target.value, formData.end_date)
+                    }
+                  }}
+                  className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                    dateTimeErrors.start_date
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                 />
               </div>
+              {dateTimeErrors.start_date && <p className='mt-1 text-sm text-red-600'>{dateTimeErrors.start_date}</p>}
             </div>
             <div>
               <label className='block text-sm font-semibold text-gray-700 mb-2'>
@@ -204,10 +397,21 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                   type='datetime-local'
                   required
                   value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, end_date: e.target.value }))
+                    // Validate on change
+                    if (formData.start_date && e.target.value) {
+                      validateDateTime(formData.start_date, e.target.value)
+                    }
+                  }}
+                  className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                    dateTimeErrors.end_date
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                 />
               </div>
+              {dateTimeErrors.end_date && <p className='mt-1 text-sm text-red-600'>{dateTimeErrors.end_date}</p>}
             </div>
           </div>
 
@@ -222,9 +426,9 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                 type='text'
                 required
                 value={formData.organizer}
-                onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, organizer: e.target.value }))}
                 className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                placeholder='Nhập tên người tổ chức...'
+                placeholder='Nhập tên tổ chức...'
               />
             </div>
           </div>
@@ -237,11 +441,55 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
               <input
                 type='text'
                 value={formData.topic}
-                onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, topic: e.target.value }))}
                 className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 placeholder='Nhập chủ đề...'
               />
             </div>
+          </div>
+
+          {/* Upload ảnh sự kiện */}
+          <div>
+            <label className='block text-sm font-semibold text-gray-700 mb-2'>Ảnh sự kiện</label>
+
+            {imagePreview ? (
+              <div className='relative border-2 border-gray-200 rounded-lg p-4'>
+                <img src={imagePreview} alt='Event preview' className='w-full h-48 object-cover rounded-lg' />
+                <button
+                  type='button'
+                  onClick={handleRemoveImage}
+                  className='absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition'
+                >
+                  <X className='w-4 h-4' />
+                </button>
+                {uploadingImage && (
+                  <div className='absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg'>
+                    <div className='text-white'>Đang upload...</div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className='relative'>
+                <input
+                  type='file'
+                  accept='image/*'
+                  onChange={handleImageChange}
+                  className='hidden'
+                  id='event-image'
+                  disabled={uploadingImage}
+                />
+                <label
+                  htmlFor='event-image'
+                  className='flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition'
+                >
+                  <Upload className='w-12 h-12 text-gray-400 mb-2' />
+                  <span className='text-sm text-gray-600'>
+                    {uploadingImage ? 'Đang upload...' : 'Click để chọn ảnh'}
+                  </span>
+                  <span className='text-xs text-gray-400 mt-1'>JPG, PNG, WEBP (max 5MB)</span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Sức chứa và Chỗ chờ */}
@@ -283,8 +531,8 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
           <div className='flex gap-4 pt-4'>
             <button
               type='submit'
-              disabled={creating || updating}
-              className='flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50'
+              disabled={creating || updating || !!dateTimeErrors.start_date || !!dateTimeErrors.end_date}
+              className='flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed'
             >
               {creating || updating ? 'Đang xử lý...' : event ? 'Cập nhật' : 'Thêm mới'}
             </button>

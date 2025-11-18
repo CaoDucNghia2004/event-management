@@ -1,10 +1,11 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router'
-import { toast } from 'react-toastify'
 import { useState } from 'react'
 import { RegisterBody, type RegisterBodyType } from '../../../schemaValidations/auth.schema'
 import authApiRequests from '../../../apiRequests/auth'
+import Swal from 'sweetalert2'
+import { translateMessage } from '../../../utils/translateMessage'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -34,10 +35,20 @@ export default function Register() {
     try {
       const res = await authApiRequests.register(data)
       if (res.status === 201) {
-        toast.success(res.data.message || 'Đăng ký thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: res.data.message || 'Đăng ký thành công!',
+          confirmButtonText: 'Đóng'
+        })
         navigate('/login')
       } else {
-        toast.error(res.data.message || 'Đăng ký thất bại!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: res.data.message || 'Đăng ký thất bại!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
       const apiErrors = error?.response?.data?.message
@@ -49,7 +60,14 @@ export default function Register() {
           }
         })
       } else {
-        toast.error(error?.response?.data?.message || 'Đăng ký thất bại!')
+        const errorMessage = translateMessage(error?.response?.data?.message) || 'Đăng ký thất bại!'
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: errorMessage,
+          confirmButtonText: 'Đóng'
+        })
       }
 
       console.error(error)

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_ALL_LOCATIONS } from '../../../graphql/queries/locationQueries'
 import { DELETE_LOCATION } from '../../../graphql/mutations/locationMutations'
-import { Edit2, Trash2, Plus, RotateCw } from 'lucide-react'
+import { Edit2, Trash2, Plus, RotateCw, Calendar } from 'lucide-react'
 import LocationModal from './LocationModal'
+import LocationCalendarModal from './LocationCalendarModal'
+import Swal from 'sweetalert2'
 
 interface LocationDetail {
   id: string
@@ -26,28 +28,50 @@ export default function ManageLocations() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<LocationDetail | null>(null)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<LocationDetail | null>(null)
   const itemsPerPage = 5
 
   const { data, loading, error, refetch } = useQuery<LocationsData>(GET_ALL_LOCATIONS)
   const [deleteLocation] = useMutation(DELETE_LOCATION, {
-    onCompleted: () => {
+    onCompleted: async () => {
       refetch()
-      alert('Xóa địa điểm thành công!')
+      await Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: 'Xóa địa điểm thành công!',
+        showConfirmButton: false,
+        timer: 1500
+      })
     },
     onError: () => {
       // Error đã được xử lý trong handleDelete
     }
   })
 
-  const locations: LocationDetail[] = data?.locations || []
+  // Filter và sắp xếp với useMemo để đảm bảo re-render
+  const filteredLocations = useMemo(() => {
+    const locations: LocationDetail[] = data?.locations || []
 
-  // Filter locations
-  const filteredLocations = locations.filter((location) => {
-    const matchName = location.name?.toLowerCase().includes(searchName.toLowerCase())
-    const matchBuilding = location.building?.toLowerCase().includes(searchBuilding.toLowerCase())
-    const matchAddress = location.address?.toLowerCase().includes(searchAddress.toLowerCase())
-    return matchName && matchBuilding && matchAddress
-  })
+    return locations
+      .filter((location) => {
+        const matchName = location.name?.toLowerCase().includes(searchName.toLowerCase())
+        const matchBuilding = location.building?.toLowerCase().includes(searchBuilding.toLowerCase())
+        const matchAddress = location.address?.toLowerCase().includes(searchAddress.toLowerCase())
+        return matchName && matchBuilding && matchAddress
+      })
+      .sort((a, b) => {
+        // Sắp xếp theo ngày tạo từ cao xuống thấp (mới nhất trước)
+        if (!a.created_at && !b.created_at) return 0
+        if (!a.created_at) return 1
+        if (!b.created_at) return -1
+
+        const dateA = new Date(a.created_at).getTime()
+        const dateB = new Date(b.created_at).getTime()
+
+        return dateB - dateA // Giảm dần (mới nhất trước)
+      })
+  }, [data, searchName, searchBuilding, searchAddress])
 
   // Pagination
   const totalPages = Math.ceil(filteredLocations.length / itemsPerPage)
@@ -66,13 +90,28 @@ export default function ManageLocations() {
   }
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa địa điểm này?')) {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Xác nhận xóa',
+      text: 'Bạn có chắc chắn muốn xóa địa điểm này?',
+      showCancelButton: true,
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280'
+    })
+
+    if (result.isConfirmed) {
       try {
         await deleteLocation({ variables: { id } })
-      } catch (err: any) {
-        // Lấy message từ err.errors[0].details.message
-        const errorMessage = err?.errors?.[0]?.details?.message || 'Không thể xóa địa điểm. Vui lòng thử lại.'
-        alert(errorMessage)
+      } catch (err: unknown) {
+        const errorMessage = (err as any)?.errors?.[0]?.details?.message || 'Không thể xóa địa điểm. Vui lòng thử lại.'
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: errorMessage,
+          confirmButtonText: 'Đóng'
+        })
       }
     }
   }
@@ -91,6 +130,16 @@ export default function ManageLocations() {
     setIsModalOpen(false)
     setEditingLocation(null)
     refetch()
+  }
+
+  const handleViewCalendar = (location: LocationDetail) => {
+    setSelectedLocation(location)
+    setIsCalendarOpen(true)
+  }
+
+  const handleCloseCalendar = () => {
+    setIsCalendarOpen(false)
+    setSelectedLocation(null)
   }
 
   if (loading) return <div className='p-8'>Đang tải...</div>
@@ -175,27 +224,15 @@ export default function ManageLocations() {
 
         <div className='overflow-x-auto'>
           <table className='w-full'>
-            <thead className='bg-gray-50 border-b-2 border-gray-200'>
+            <thead className='bg-blue-600 text-white'>
               <tr>
-                <th className='px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider'>STT</th>
-                <th className='px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider'>
-                  Tên địa điểm
-                </th>
-                <th className='px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider'>
-                  Tòa nhà
-                </th>
-                <th className='px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider'>
-                  Địa chỉ
-                </th>
-                <th className='px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider'>
-                  Sức chứa
-                </th>
-                <th className='px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider'>
-                  Ngày tạo
-                </th>
-                <th className='px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider'>
-                  Thao tác
-                </th>
+                <th className='px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider'>STT</th>
+                <th className='px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider'>Tên địa điểm</th>
+                <th className='px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider'>Tòa nhà</th>
+                <th className='px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider'>Địa chỉ</th>
+                <th className='px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider'>Sức chứa</th>
+                <th className='px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider'>Ngày tạo</th>
+                <th className='px-6 py-4 text-center text-sm font-semibold uppercase tracking-wider'>Thao tác</th>
               </tr>
             </thead>
             <tbody className='bg-white divide-y divide-gray-200'>
@@ -215,6 +252,13 @@ export default function ManageLocations() {
                   </td>
                   <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
                     <div className='flex justify-center gap-3'>
+                      <button
+                        onClick={() => handleViewCalendar(location)}
+                        className='p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors'
+                        title='Xem lịch sự kiện'
+                      >
+                        <Calendar className='w-5 h-5' />
+                      </button>
                       <button
                         onClick={() => handleEdit(location)}
                         className='p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
@@ -268,6 +312,15 @@ export default function ManageLocations() {
 
       {/* Modal */}
       {isModalOpen && <LocationModal location={editingLocation} onClose={handleCloseModal} />}
+
+      {/* Calendar Modal */}
+      {isCalendarOpen && selectedLocation && (
+        <LocationCalendarModal
+          locationId={selectedLocation.id}
+          locationName={selectedLocation.name}
+          onClose={handleCloseCalendar}
+        />
+      )}
     </div>
   )
 }

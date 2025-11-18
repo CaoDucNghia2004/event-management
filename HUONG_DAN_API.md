@@ -554,3 +554,308 @@ rs.initiate()
 ```
 
 **Khuyến nghị:** Dùng **Cách 1** nếu không cần transaction phức tạp! 🎯
+
+---
+
+## 📬 7. NOTIFICATION API (Tin nhắn Real-time SSE)
+
+### ✅ **Đã implement đầy đủ - SSE (Server-Sent Events)**
+
+Backend sử dụng **SSE (Server-Sent Events)** để gửi tin nhắn real-time từ Ban tổ chức đến người tham gia sự kiện.
+
+### **REST API Endpoints**
+
+#### **1. Lấy tất cả notifications**
+
+```http
+GET /api/v1/notification
+Authorization: Bearer {token}
+```
+
+**Response:**
+
+```json
+{
+  "status": 200,
+  "message": "Lấy tất cả thông báo thành công.",
+  "data": [
+    {
+      "_id": "674e1234567890abcdef",
+      "event_id": "674d9876543210fedcba",
+      "organizer_id": "674c5432109876543210",
+      "message": "Xin chào mọi người, sự kiện sẽ bắt đầu lúc 14h00",
+      "created_at": "2025-11-17T14:01:23.000000Z",
+      "updated_at": "2025-11-17T14:01:23.000000Z"
+    }
+  ]
+}
+```
+
+#### **2. SSE Stream - Nhận tin nhắn real-time theo Event**
+
+```http
+GET /api/v1/notification/{eventId}?token={jwt_token}
+```
+
+**⚠️ Lưu ý quan trọng:**
+
+- Endpoint này là **SSE stream**, không phải REST API thông thường
+- Token truyền qua **query string** `?token=xxx` (vì EventSource không hỗ trợ custom headers)
+- Thư viện `tymon/jwt-auth` **tự động hỗ trợ** lấy token từ query string
+- Connection timeout: **300 giây (5 phút)**
+- Heartbeat: **2 giây/lần** để giữ connection sống
+
+**SSE Events Backend gửi:**
+
+```
+event: initial
+data: {"count": 2, "notifications": [...]}
+
+event: notification
+data: {"_id": "...", "event_id": "...", "message": "..."}
+
+event: timeout
+data: {"message": "Connection timeout"}
+
+: heartbeat
+```
+
+**Frontend Implementation:**
+
+```typescript
+const token = getAccessTokenFromLS()
+const url = `${config.BACKEND_URL}/api/v1/notification/${eventId}?token=${token}`
+const eventSource = new EventSource(url)
+
+// Nhận danh sách ban đầu
+eventSource.addEventListener('initial', (event) => {
+  const data = JSON.parse(event.data)
+  setNotifications(data.notifications || [])
+})
+
+// Nhận notification mới real-time
+eventSource.addEventListener('notification', (event) => {
+  const notification = JSON.parse(event.data)
+  setNotifications((prev) => [notification, ...prev])
+})
+
+// Timeout
+eventSource.addEventListener('timeout', () => {
+  eventSource.close()
+})
+
+// Cleanup
+return () => eventSource.close()
+```
+
+#### **3. Tạo notification mới**
+
+```http
+POST /api/v1/notification
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "event_id": "674d9876543210fedcba",
+  "organizer_id": "674c5432109876543210",
+  "message": "Sự kiện sẽ bắt đầu sau 15 phút nữa"
+}
+```
+
+**Validation:**
+
+- `event_id`: required, string, phải tồn tại trong DB
+- `organizer_id`: required, string
+- `message`: required, string
+
+**Response:**
+
+```json
+{
+  "status": 201,
+  "message": "Tạo thông báo thành công.",
+  "data": {
+    "_id": "674e1234567890abcdef",
+    "event_id": "674d9876543210fedcba",
+    "organizer_id": "674c5432109876543210",
+    "message": "Sự kiện sẽ bắt đầu sau 15 phút nữa",
+    "created_at": "2025-11-17T14:05:00.000000Z",
+    "updated_at": "2025-11-17T14:05:00.000000Z"
+  }
+}
+```
+
+#### **4. Cập nhật notification**
+
+```http
+PUT /api/v1/notification/{id}
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "message": "Nội dung tin nhắn đã được cập nhật"
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": 200,
+  "message": "Cập nhật thông báo thành công.",
+  "data": { ... }
+}
+```
+
+#### **5. Xóa notification**
+
+```http
+DELETE /api/v1/notification/{id}
+Authorization: Bearer {token}
+```
+
+**Response:**
+
+```json
+{
+  "status": 200,
+  "message": "Xóa thông báo thành công.",
+  "data": null
+}
+```
+
+### **Frontend Components**
+
+#### **NotificationList.tsx** (Hiển thị tin nhắn - Chỉ đọc)
+
+```typescript
+<NotificationList eventId={eventId} enableRealtime={true} />
+```
+
+**Props:**
+
+- `eventId`: string - ID của sự kiện
+- `enableRealtime`: boolean - Bật/tắt SSE real-time (default: true)
+
+**Features:**
+
+- ✅ Kết nối SSE tự động khi mount
+- ✅ Nhận danh sách ban đầu
+- ✅ Nhận notification mới real-time
+- ✅ Hiển thị trạng thái kết nối (đang kết nối/ngắt kết nối)
+- ✅ Auto cleanup khi unmount
+- ✅ Loading state
+- ✅ Empty state
+
+#### **NotificationForm.tsx** (Form gửi tin nhắn - Chỉ dành cho Organizer)
+
+```typescript
+<NotificationForm eventId={eventId} organizerId={organizerId} onSuccess={() => refetch()} />
+```
+
+**Props:**
+
+- `eventId`: string - ID của sự kiện
+- `organizerId`: string - ID của người tổ chức
+- `onSuccess`: () => void - Callback khi gửi thành công
+
+**Features:**
+
+- ✅ Textarea với placeholder
+- ✅ Validation: message không được rỗng
+- ✅ Loading state khi đang gửi
+- ✅ Success/Error notification (SweetAlert2)
+- ✅ Auto clear form sau khi gửi thành công
+
+### **SSE Flow Diagram**
+
+```
+┌─────────────┐                    ┌─────────────┐
+│   Browser   │                    │   Backend   │
+│  (Frontend) │                    │  (Laravel)  │
+└──────┬──────┘                    └──────┬──────┘
+       │                                  │
+       │  GET /notification/{id}?token=xxx│
+       ├─────────────────────────────────>│
+       │                                  │
+       │  event: initial                  │
+       │<─────────────────────────────────┤
+       │  data: {notifications: [...]}    │
+       │                                  │
+       │  : heartbeat (every 2s)          │
+       │<─────────────────────────────────┤
+       │                                  │
+       │                                  │ New notification
+       │                                  │ created in DB
+       │  event: notification             │
+       │<─────────────────────────────────┤
+       │  data: {new notification}        │
+       │                                  │
+       │  : heartbeat                     │
+       │<─────────────────────────────────┤
+       │                                  │
+       │  (after 300s)                    │
+       │  event: timeout                  │
+       │<─────────────────────────────────┤
+       │                                  │
+       │  Connection closed               │
+       └──────────────────────────────────┘
+```
+
+### **Middleware & Permissions**
+
+```php
+Route::prefix('/notification')->group(function () {
+    Route::get('/{eventId}', [NotificationController::class, 'notificationsByEvent'])
+        ->name('get.notifications.by.event');
+    Route::get('/', [NotificationController::class, 'getAllNotification'])
+        ->name('get.all.notifications');
+    Route::post('/', [NotificationController::class, 'store'])
+        ->name('create.notification');
+    Route::put('/{id}', [NotificationController::class, 'update'])
+        ->name('update.notification');
+    Route::delete('/{id}', [NotificationController::class, 'delete'])
+        ->name('delete.notification');
+});
+```
+
+**Middleware áp dụng:**
+
+- `jwt.auth` - Xác thực JWT token
+- `check.permission` - Kiểm tra quyền theo route name
+- `active` - Kiểm tra user đã kích hoạt tài khoản
+
+**Permissions cần thiết:**
+
+- `get notifications by event` - Xem tin nhắn theo sự kiện
+- `get all notifications` - Xem tất cả tin nhắn
+- `create notification` - Tạo tin nhắn mới
+- `update notification` - Cập nhật tin nhắn
+- `delete notification` - Xóa tin nhắn
+
+### **✅ Checklist - Frontend gọi đúng 100%**
+
+- [x] SSE Connection: `GET /api/v1/notification/{eventId}?token=xxx`
+- [x] Token qua query string (EventSource không hỗ trợ custom headers)
+- [x] Listen 3 events: `initial`, `notification`, `timeout`
+- [x] Heartbeat comment tự động bị browser bỏ qua
+- [x] REST API: `POST /api/v1/notification` để tạo tin nhắn mới
+- [x] REST API: `PUT /api/v1/notification/{id}` để cập nhật
+- [x] REST API: `DELETE /api/v1/notification/{id}` để xóa
+- [x] Auto cleanup SSE connection on unmount
+- [x] Error handling đầy đủ
+- [x] Loading & Empty states
+
+### **🎯 Kết luận**
+
+**Implementation SSE hoàn toàn đúng chuẩn:**
+
+1. ✅ Backend sử dụng SSE protocol chuẩn
+2. ✅ Frontend sử dụng EventSource native của browser
+3. ✅ Token authentication qua query string (tymon/jwt-auth hỗ trợ sẵn)
+4. ✅ Real-time updates không cần polling
+5. ✅ Heartbeat để giữ connection sống
+6. ✅ Timeout tự động sau 5 phút
+7. ✅ Proper cleanup để tránh memory leak
+
+**Không cần WebSocket, không cần Pusher, không cần Redis!** 🎉

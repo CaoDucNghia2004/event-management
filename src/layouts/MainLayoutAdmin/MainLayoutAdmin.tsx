@@ -14,7 +14,7 @@ import {
   X,
   Home
 } from 'lucide-react'
-import { toast } from 'react-toastify'
+import Swal from 'sweetalert2'
 import authApiRequests from '../../apiRequests/auth'
 
 interface Props {
@@ -42,11 +42,22 @@ export default function MainLayoutAdmin({ children }: Props) {
       const res = await authApiRequests.logout()
       if (res.data.status === 200) {
         logout()
-        toast.success('Đăng xuất thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đăng xuất thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
         navigate('/login')
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Lỗi khi đăng xuất!')
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: error?.response?.data?.message || 'Lỗi khi đăng xuất!',
+        confirmButtonText: 'Đóng'
+      })
     }
   }
 
@@ -85,7 +96,7 @@ export default function MainLayoutAdmin({ children }: Props) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                 }`}
               >
@@ -132,16 +143,6 @@ export default function MainLayoutAdmin({ children }: Props) {
 
       {/* Main Content */}
       <div className='flex-1 flex flex-col overflow-hidden'>
-        {/* Header */}
-        <header className='bg-white shadow-sm p-4 flex items-center justify-between'>
-          <h2 className='text-xl font-semibold text-gray-800'>Quản lý hệ thống</h2>
-          <div className='flex items-center gap-4'>
-            <span className='text-sm text-gray-600'>
-              Xin chào, <span className='font-semibold'>{user?.name}</span>
-            </span>
-          </div>
-        </header>
-
         {/* Page Content */}
         <main className='flex-1 overflow-y-auto bg-gray-100'>{children}</main>
       </div>

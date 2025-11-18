@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Frontend GraphQL</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Frontend GraphQL Connection</h1>
+    
+    <button onclick="testEvents()">Test Events Query</button>
+    <button onclick="testWithAuth()">Test With Auth Token</button>
+    <button onclick="checkCORS()">Check CORS</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const GRAPHQL_URL = 'http://127.0.0.1:8000/graphql';
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong><br>${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function testEvents() {
+            log('Testing Events Query...', 'info');
+            
+            const query = `
+                query {
+                    events {
+                        id
+                        title
+                        description
+                    }
+                }
+            `;
+
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Origin': 'http://localhost:3000'
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+                
+                if (data.errors) {
+                    log(`❌ GraphQL Errors:<pre>${JSON.stringify(data.errors, null, 2)}</pre>`, 'error');
+                } else if (data.data) {
+                    log(`✅ Success!<pre>${JSON.stringify(data.data, null, 2)}</pre>`, 'success');
+                } else {
+                    log(`⚠️ Unexpected response:<pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Network Error: ${error.message}<pre>${error.stack}</pre>`, 'error');
+            }
+        }
+
+        async function testWithAuth() {
+            const token = prompt('Nhập JWT token (hoặc để trống):');
+            log('Testing with Auth Token...', 'info');
+            
+            const query = `
+                query {
+                    events {
+                        id
+                        title
+                    }
+                }
+            `;
+
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Origin': 'http://localhost:3000'
+                };
+                
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+                
+                if (data.errors) {
+                    log(`❌ GraphQL Errors:<pre>${JSON.stringify(data.errors, null, 2)}</pre>`, 'error');
+                } else if (data.data) {
+                    log(`✅ Success!<pre>${JSON.stringify(data.data, null, 2)}</pre>`, 'success');
+                } else {
+                    log(`⚠️ Unexpected response:<pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkCORS() {
+            log('Checking CORS headers...', 'info');
+            
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:3000',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type, Authorization'
+                    }
+                });
+
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+
+                log(`✅ CORS Headers:<pre>${JSON.stringify(headers, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                log(`❌ CORS Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuthStore } from '../../store/useAuthStore'
-import { User, LogOut, Calendar, Home, MessageSquare, FileText, LogIn, UserPlus, Settings } from 'lucide-react'
+import { User, LogOut, Calendar, Home, MessageSquare, FileText, Bell, LogIn, UserPlus, Settings } from 'lucide-react'
 import authApiRequests from '../../apiRequests/auth'
-import { toast } from 'react-toastify'
+import Swal from 'sweetalert2'
+import config from '../../constants/config'
+import AlertList from '../Alerts/AlertList'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -11,6 +13,12 @@ export default function Header() {
   const navigate = useNavigate()
 
   const { user, logout } = useAuthStore()
+
+  const getAvatarUrl = (avatar: string | null | undefined) => {
+    if (!avatar) return null
+    if (avatar.startsWith('http')) return avatar
+    return `${config.baseUrl}${avatar}`
+  }
 
   const menuItems = [
     { path: '/', label: 'Trang chủ', icon: Home },
@@ -25,14 +33,30 @@ export default function Header() {
 
       if (res.data.status === 200) {
         logout() // Xóa state + localStorage
-        toast.success('Đăng xuất thành công!')
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đăng xuất thành công!',
+          showConfirmButton: false,
+          timer: 1500
+        })
         navigate('/login')
       } else {
-        toast.error(res.data.message || 'Đăng xuất thất bại!')
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: res.data.message || 'Đăng xuất thất bại!',
+          confirmButtonText: 'Đóng'
+        })
       }
     } catch (error: any) {
       console.error('Logout error:', error)
-      toast.error(error?.response?.data?.message || 'Lỗi khi đăng xuất!')
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: error?.response?.data?.message || 'Lỗi khi đăng xuất!',
+        confirmButtonText: 'Đóng'
+      })
     }
   }
   const getInitial = (name?: string) => (name ? name.charAt(0).toUpperCase() : '?')
@@ -67,77 +91,83 @@ export default function Header() {
                 </Link>
               )
             })}
+
+            {/* Alert Bell - Thông báo */}
+            {user && <AlertList />}
           </nav>
 
           {/* User Menu */}
           {user ? (
-            <div className='relative ml-4'>
-              <button
-                onClick={() => setIsMenuOpen((prev) => !prev)}
-                onBlur={() => setTimeout(() => setIsMenuOpen(false), 200)}
-                className='flex items-center gap-2 px-3 py-2 hover:bg-gray-800 rounded-lg transition-all'
-              >
-                {user.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className='w-8 h-8 rounded-full object-cover border-2 border-white'
-                  />
-                ) : (
-                  <div className='w-8 h-8 flex items-center justify-center bg-gray-700 text-white font-bold rounded-full border-2 border-white'>
-                    {getInitial(user.name)}
+            <div className='flex items-center gap-3 ml-4'>
+              {/* User Dropdown */}
+              <div className='relative'>
+                <button
+                  onClick={() => setIsMenuOpen((prev) => !prev)}
+                  onBlur={() => setTimeout(() => setIsMenuOpen(false), 200)}
+                  className='flex items-center gap-2 px-3 py-2 hover:bg-gray-800 rounded-lg transition-all'
+                >
+                  {user.avatar ? (
+                    <img
+                      src={getAvatarUrl(user.avatar) || ''}
+                      alt={user.name}
+                      className='w-8 h-8 rounded-full object-cover border-2 border-white'
+                    />
+                  ) : (
+                    <div className='w-8 h-8 flex items-center justify-center bg-gray-700 text-white font-bold rounded-full border-2 border-white'>
+                      {getInitial(user.name)}
+                    </div>
+                  )}
+                  <span className='text-white font-bold text-sm hidden md:block'>{user.name}</span>
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    className={`w-4 h-4 text-white transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    stroke='currentColor'
+                  >
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 9l-7 7-7-7' />
+                  </svg>
+                </button>
+
+                {isMenuOpen && (
+                  <div className='absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50'>
+                    <Link
+                      to='/profile'
+                      className='flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition'
+                    >
+                      <User className='w-4 h-4 text-gray-700' />
+                      <span className='text-sm font-semibold'>Thông tin cá nhân</span>
+                    </Link>
+
+                    <Link
+                      to='/my-events'
+                      className='flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition'
+                    >
+                      <Calendar className='w-4 h-4 text-gray-700' />
+                      <span className='text-sm font-semibold'>Sự kiện của tôi</span>
+                    </Link>
+
+                    {/* Hiển thị menu Admin nếu user có role ADMIN */}
+                    {user.roles?.includes('ADMIN') && (
+                      <Link
+                        to='/admin/dashboard'
+                        className='flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition border-t border-gray-100'
+                      >
+                        <Settings className='w-4 h-4 text-gray-700' />
+                        <span className='text-sm font-semibold'>Quản lý hệ thống</span>
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={handleLogout}
+                      className='flex w-full items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition text-left border-t border-gray-100'
+                    >
+                      <LogOut className='w-4 h-4' />
+                      <span className='text-sm font-semibold'>Đăng xuất</span>
+                    </button>
                   </div>
                 )}
-                <span className='text-white font-bold text-sm hidden md:block'>{user.name}</span>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  className={`w-4 h-4 text-white transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                >
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 9l-7 7-7-7' />
-                </svg>
-              </button>
-
-              {isMenuOpen && (
-                <div className='absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50'>
-                  <Link
-                    to='/profile'
-                    className='flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition'
-                  >
-                    <User className='w-4 h-4 text-gray-700' />
-                    <span className='text-sm font-semibold'>Thông tin cá nhân</span>
-                  </Link>
-
-                  <Link
-                    to='/my-events'
-                    className='flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition'
-                  >
-                    <Calendar className='w-4 h-4 text-gray-700' />
-                    <span className='text-sm font-semibold'>Sự kiện của tôi</span>
-                  </Link>
-
-                  {/* Hiển thị menu Admin nếu user có role ADMIN */}
-                  {user.roles?.includes('ADMIN') && (
-                    <Link
-                      to='/admin/dashboard'
-                      className='flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 transition border-t border-gray-100'
-                    >
-                      <Settings className='w-4 h-4 text-blue-600' />
-                      <span className='text-sm font-semibold'>Quản lý hệ thống</span>
-                    </Link>
-                  )}
-
-                  <button
-                    onClick={handleLogout}
-                    className='flex w-full items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition text-left border-t border-gray-100'
-                  >
-                    <LogOut className='w-4 h-4' />
-                    <span className='text-sm font-semibold'>Đăng xuất</span>
-                  </button>
-                </div>
-              )}
+              </div>
             </div>
           ) : (
             <div className='flex items-center gap-3 ml-4'>

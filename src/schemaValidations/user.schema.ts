@@ -68,3 +68,17 @@ export const ChangePasswordResponse = z.object({
 })
 
 export type ChangePasswordResponseType = z.infer<typeof ChangePasswordResponse>
+
+export const UploadAvatarResponse = z.object({
+  status: z.number(),
+  message: z.string(),
+  data: z.object({
+    user_id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    avatar: z.string(),
+    updated_at: z.string()
+  })
+})
+
+export type UploadAvatarResponseType = z.infer<typeof UploadAvatarResponse>

@@ -136,7 +136,7 @@ export default function Home() {
             {/* Text Content */}
             <div className='space-y-6'>
               <div className='inline-block px-6 py-3 bg-blue-50 text-blue-600 rounded-full text-lg font-semibold mb-4'>
-                🎓 Hệ thống dành cho sinh viên HUIT
+                Hệ thống dành cho sinh viên HUIT
               </div>
               <h2 className='text-4xl md:text-5xl font-bold text-gray-800 mb-4 leading-tight'>
                 Nền tảng quản lý sự kiện học thuật hiện đại
@@ -185,7 +185,7 @@ export default function Home() {
         <div className='max-w-7xl mx-auto px-4'>
           <div className='text-center mb-16'>
             <div className='inline-block px-6 py-3 bg-blue-50 text-blue-600 rounded-full text-lg font-semibold mb-4'>
-              ✨ Các hoạt động nổi bật
+              Các hoạt động nổi bật
             </div>
             <div className='flex items-center justify-center gap-4 mb-4'>
               <h2 className='text-5xl md:text-6xl font-bold text-gray-800'>Sự kiện & Hội thảo tại HUIT</h2>
