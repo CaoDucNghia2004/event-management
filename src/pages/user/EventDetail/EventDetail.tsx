@@ -419,12 +419,14 @@ export default function EventDetail() {
                   <div className='bg-gray-100 border border-gray-300 rounded-xl p-6 text-center'>
                     <p className='text-gray-700 font-semibold'>
                       {event.current_status === 'ENDED'
-                        ? '❌ Sự kiện đã kết thúc'
+                        ? 'Sự kiện đã kết thúc'
                         : event.current_status === 'CANCELLED'
-                          ? '❌ Sự kiện đã bị hủy'
-                          : event.current_approval_status !== 'APPROVED'
-                            ? '⏳ Sự kiện đang chờ phê duyệt'
-                            : '🔒 Chưa mở đăng ký'}
+                          ? 'Sự kiện đã bị hủy'
+                          : event.current_status === 'ONGOING'
+                            ? 'Đã đóng đăng ký'
+                            : event.current_approval_status !== 'APPROVED'
+                              ? 'Sự kiện đang chờ phê duyệt'
+                              : 'Chưa mở đăng ký'}
                     </p>
                   </div>
                 )}

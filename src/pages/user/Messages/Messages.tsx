@@ -245,7 +245,7 @@ export default function Messages() {
 
                 {/* Messages Area */}
                 <div className='flex-1 overflow-y-auto p-6'>
-                  <NotificationList eventId={selectedEvent.id} enableRealtime={true} />
+                  <NotificationList eventId={selectedEvent.id} enableRealtime={false} />
                 </div>
               </>
             )}

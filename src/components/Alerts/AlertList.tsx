@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMutation } from '@apollo/client/react'
 import { Bell, X, AlertTriangle, Info, CheckCircle, Ban } from 'lucide-react'
 import { UPDATE_ALERT } from '../../graphql/mutations/alertMutations'
@@ -14,11 +14,13 @@ export default function AlertList() {
   const { user, setUser } = useAuthStore()
   const [alerts, setAlerts] = useState<AlertWithIndex[]>([])
   const [updateAlert] = useMutation(UPDATE_ALERT)
+  const hasFetchedUserId = useRef(false)
 
-  // Auto-fetch user data từ /api/v1/auth/me nếu thiếu field 'id'
+  // Auto-fetch user data từ /api/v1/auth/me CHỈ 1 LẦN nếu thiếu field 'id'
   useEffect(() => {
     const fetchUserIfNeeded = async () => {
-      if (user && !user.id) {
+      if (user && !user.id && !hasFetchedUserId.current) {
+        hasFetchedUserId.current = true
         console.log('🔄 User missing ID, fetching from /api/v1/auth/me...')
         try {
           const res = await userApiRequests.getProfile()
@@ -32,7 +34,22 @@ export default function AlertList() {
       }
     }
     fetchUserIfNeeded()
-  }, [user, setUser])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Fetch alerts khi user bấm mở panel (không polling tự động nữa)
+  const fetchUserAlerts = async () => {
+    if (!user) return
+
+    try {
+      const res = await userApiRequests.getProfile()
+      if (res.status === 200 && res.data?.data) {
+        setUser(res.data.data)
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch user alerts:', error)
+    }
+  }
 
   useEffect(() => {
     console.log('🔔 AlertList - User:', user)
@@ -133,11 +150,20 @@ export default function AlertList() {
   const [isOpen, setIsOpen] = useState(false)
   const unreadCount = alerts.filter((alert) => !alert.is_read).length
 
+  // Xử lý khi bấm vào nút chuông - fetch alerts mới
+  const handleTogglePanel = async () => {
+    setIsOpen(!isOpen)
+    // Fetch alerts mới khi mở panel
+    if (!isOpen) {
+      await fetchUserAlerts()
+    }
+  }
+
   return (
     <div className='relative'>
       {/* Bell Icon Button - Giống style menu items */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleTogglePanel}
         className='relative flex items-center gap-2 px-4 py-2 text-white font-bold transition-all hover:bg-gray-800 rounded'
         title='Thông báo'
       >

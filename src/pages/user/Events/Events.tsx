@@ -92,11 +92,15 @@ export default function Events() {
     })
   }
 
-  // Lấy events sắp diễn ra (UPCOMING) và áp dụng bộ lọc
-  const upcomingEvents = applyFilters(events.filter((event) => event.current_status === 'UPCOMING'))
+  // Lấy events sắp diễn ra (UPCOMING) - CHỈ HIỂN THỊ ĐÃ DUYỆT và áp dụng bộ lọc
+  const upcomingEvents = applyFilters(
+    events.filter((event) => event.current_status === 'UPCOMING' && event.current_approval_status === 'APPROVED')
+  )
 
-  // Lấy events đang mở đăng ký (OPEN) và áp dụng bộ lọc
-  const openEvents = applyFilters(events.filter((event) => event.current_status === 'OPEN'))
+  // Lấy events đang mở đăng ký (OPEN) - CHỈ HIỂN THỊ ĐÃ DUYỆT và áp dụng bộ lọc
+  const openEvents = applyFilters(
+    events.filter((event) => event.current_status === 'OPEN' && event.current_approval_status === 'APPROVED')
+  )
 
   // Sử dụng openEvents làm filteredEvents cho phần hiển thị chính
   const filteredEvents = openEvents

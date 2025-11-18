@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import ReactDOM from 'react-dom'
 import { useMutation, useQuery } from '@apollo/client/react'
 import { CREATE_EVENT, UPDATE_EVENT } from '../../../graphql/mutations/eventMutations'
 import { GET_ALL_LOCATIONS } from '../../../graphql/queries/locationQueries'
@@ -33,9 +34,12 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
     start_date: '',
     end_date: ''
   })
+  const [capacityError, setCapacityError] = useState('')
 
   const { data: locationsData } = useQuery(GET_ALL_LOCATIONS)
-  const locations = (locationsData as { locations: { id: string; name: string; building?: string }[] })?.locations || []
+  const locations =
+    (locationsData as { locations: { id: string; name: string; building?: string; capacity?: number }[] })?.locations ||
+    []
 
   const [createEvent, { loading: creating }] = useMutation(CREATE_EVENT, {
     onError: (error: {
@@ -142,6 +146,21 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
   }
 
   // Validate datetime
+  const validateCapacity = (locationId: string, eventCapacity: string) => {
+    if (!locationId || !eventCapacity) {
+      setCapacityError('')
+      return true
+    }
+    const location = locations.find((loc: any) => loc.id === locationId)
+    const capacity = parseInt(eventCapacity)
+    if (location?.capacity && capacity > location.capacity) {
+      setCapacityError(`Sức chứa vượt quá giới hạn của địa điểm (${location.capacity} người)`)
+      return false
+    }
+    setCapacityError('')
+    return true
+  }
+
   const validateDateTime = (startDate: string, endDate: string) => {
     const errors = { start_date: '', end_date: '' }
     const now = new Date()
@@ -294,11 +313,11 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
     }
   }
 
-  return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn'>
-      <div className='absolute inset-0 bg-gray-900/30 backdrop-blur-sm' onClick={onClose}></div>
+  const modal = (
+    <div className='fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fadeIn'>
+      <div className='absolute inset-0 bg-gray-900/50 backdrop-blur-sm' onClick={onClose}></div>
       <div className='relative bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto'>
-        <div className='sticky top-0 bg-white border-b border-gray-200 px-8 py-6 rounded-t-xl'>
+        <div className='sticky top-0 bg-white bg-opacity-100 z-50 border-b border-gray-200 px-8 py-6 rounded-t-xl'>
           <h2 className='text-2xl font-bold text-gray-800'>{event ? 'Cập nhật sự kiện' : 'Thêm sự kiện mới'}</h2>
         </div>
 
@@ -346,13 +365,17 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
               <select
                 required
                 value={formData.location_id}
-                onChange={(e) => setFormData((prev) => ({ ...prev, location_id: e.target.value }))}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, location_id: e.target.value }))
+                  validateCapacity(e.target.value, formData.capacity)
+                }}
                 className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white'
               >
                 <option value=''>-- Chọn địa điểm --</option>
-                {locations.map((location: { id: string; name: string; building?: string }) => (
+                {locations.map((location: { id: string; name: string; building?: string; capacity?: number }) => (
                   <option key={location.id} value={location.id}>
-                    {location.name} {location.building ? `- ${location.building}` : ''}
+                    {location.name} {location.building ? `- ${location.building}` : ''}{' '}
+                    {location.capacity ? `(${location.capacity} người)` : ''}
                   </option>
                 ))}
               </select>
@@ -505,11 +528,17 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                   required
                   min='1'
                   value={formData.capacity}
-                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => {
+                    setFormData({ ...formData, capacity: e.target.value })
+                    validateCapacity(formData.location_id, e.target.value)
+                  }}
+                  className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                    capacityError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   placeholder='Số người tối đa...'
                 />
               </div>
+              {capacityError && <p className='mt-1 text-sm text-red-600'>{capacityError}</p>}
             </div>
             <div>
               <label className='block text-sm font-semibold text-gray-700 mb-2'>Danh sách chờ</label>
@@ -531,7 +560,9 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
           <div className='flex gap-4 pt-4'>
             <button
               type='submit'
-              disabled={creating || updating || !!dateTimeErrors.start_date || !!dateTimeErrors.end_date}
+              disabled={
+                creating || updating || !!dateTimeErrors.start_date || !!dateTimeErrors.end_date || !!capacityError
+              }
               className='flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed'
             >
               {creating || updating ? 'Đang xử lý...' : event ? 'Cập nhật' : 'Thêm mới'}
@@ -548,6 +579,13 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
       </div>
     </div>
   )
+
+  // Render modal into document.body to avoid stacking-context issues
+  if (typeof document !== 'undefined') {
+    return ReactDOM.createPortal(modal, document.body)
+  }
+
+  return modal
 }
 
 export default EventModal

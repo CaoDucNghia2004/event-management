@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const hasFetched = useRef(false)
+  const hasRefetchedReputation = useRef(false)
 
   // Helper to get full avatar URL
   const getAvatarUrl = (avatar: string | null | undefined) => {
@@ -88,10 +89,11 @@ export default function ProfilePage() {
     fetchProfile()
   }, [reset])
 
-  // Refetch profile khi chuyển sang tab reputation
+  // Refetch profile CHỈ 1 LẦN khi chuyển sang tab reputation (tránh gọi API liên tục)
   useEffect(() => {
     const refetchProfile = async () => {
-      if (activeTab === 'reputation') {
+      if (activeTab === 'reputation' && !hasRefetchedReputation.current) {
+        hasRefetchedReputation.current = true
         try {
           const res = await userApiRequests.getProfile()
           if (res.status === 200 && res.data?.data) {
@@ -100,6 +102,10 @@ export default function ProfilePage() {
         } catch {
           // Silent fail
         }
+      }
+      // Reset flag khi rời khỏi tab reputation
+      if (activeTab !== 'reputation') {
+        hasRefetchedReputation.current = false
       }
     }
     refetchProfile()
@@ -460,7 +466,6 @@ function ReputationTab({ userData }: { userData: UserInfoResponseType['data'] | 
   })
 
   const reputationScore = userData?.reputation_score ?? 70
-  const alerts = userData?.alerts ?? []
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600'
@@ -580,33 +585,6 @@ function ReputationTab({ userData }: { userData: UserInfoResponseType['data'] | 
           </div>
         )}
       </div>
-
-      {/* Thông báo từ hệ thống */}
-      {alerts.length > 0 && (
-        <div className='space-y-3'>
-          <h3 className='text-lg font-semibold text-gray-800'>Thông báo</h3>
-          {alerts.map((alert, index) => (
-            <div
-              key={index}
-              className={`p-4 rounded-lg border ${
-                alert.type === 'BLOCK_REGISTRATION' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
-              }`}
-            >
-              <h4
-                className={`font-semibold mb-1 ${
-                  alert.type === 'BLOCK_REGISTRATION' ? 'text-red-800' : 'text-yellow-800'
-                }`}
-              >
-                {alert.title}
-              </h4>
-              <p className={`text-sm ${alert.type === 'BLOCK_REGISTRATION' ? 'text-red-700' : 'text-yellow-700'}`}>
-                {alert.message}
-              </p>
-              <p className='text-xs text-gray-500 mt-2'>{new Date(alert.created_at).toLocaleDateString('vi-VN')}</p>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Lịch sử điểm */}
       <div>
