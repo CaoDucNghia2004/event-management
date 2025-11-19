@@ -616,7 +616,7 @@ export default function MyRegistrations() {
                                     </div>
                                   </div>
                                   <p className='text-sm text-blue-700 font-medium'>
-                                    💡 Vui lòng nhớ mã này để điểm danh tại sự kiện
+                                    Vui lòng nhớ mã này để điểm danh tại sự kiện
                                   </p>
                                   {!registration.code_roll_call && (
                                     <p className='text-xs text-red-600 mt-2 font-semibold'>
@@ -633,7 +633,7 @@ export default function MyRegistrations() {
                       {/* Actions */}
                       <div className='flex flex-wrap gap-4 pt-6 border-t border-gray-200'>
                         <button
-                          onClick={() => navigate(`/events/${registration.event_id}`)}
+                          onClick={() => navigate(`/events/${registration.event_id}`, { state: { from: 'my-events' } })}
                           className='flex-1 min-w-[200px] flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg text-base'
                         >
                           <FiEye className='w-5 h-5' />

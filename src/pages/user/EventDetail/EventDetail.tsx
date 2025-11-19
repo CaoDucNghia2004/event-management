@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router'
+import { useParams, useNavigate, useLocation } from 'react-router'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_EVENT_BY_ID } from '../../../graphql/queries/eventQueries'
 import { CREATE_REGISTRATION } from '../../../graphql/mutations/registrationMutations'
@@ -10,6 +10,8 @@ import { Calendar, MapPin, Users, Clock, Tag, ArrowLeft, CheckCircle, XCircle, A
 import { useAuthStore } from '../../../store/useAuthStore'
 import Swal from 'sweetalert2'
 import { useState } from 'react'
+import { GET_REGISTRATIONS_BY_USER } from '../../../graphql/queries/registrationQueries'
+import type { RegistrationsByUserData } from '../../../types/registration.types'
 import RegistrationSuccessModal from '../../../components/RegistrationSuccessModal'
 import { getUserIdFromToken } from '../../../utils/utils'
 import type { CreateRegistrationData, Registration } from '../../../types/registration.types'
@@ -18,6 +20,7 @@ import type { EventData } from '../../../types/event.types'
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuthStore()
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [registrationData, setRegistrationData] = useState<Registration | null>(null)
@@ -26,6 +29,13 @@ export default function EventDetail() {
     variables: { id },
     skip: !id,
     fetchPolicy: 'network-only'
+  })
+
+  // Registrations of current user (used to detect if already registered)
+  const currentUserIdForQuery = getUserIdFromToken()
+  const { data: regsData, refetch: refetchRegs } = useQuery<RegistrationsByUserData>(GET_REGISTRATIONS_BY_USER, {
+    variables: { user_id: currentUserIdForQuery || '' },
+    skip: !currentUserIdForQuery
   })
 
   const [createRegistration, { loading: registering }] = useMutation<CreateRegistrationData>(CREATE_REGISTRATION, {
@@ -246,6 +256,12 @@ export default function EventDetail() {
 
   const event = data.event
 
+  const isRegistered = Boolean(
+    regsData?.registrationsByUser?.some(
+      (r) => String(r.event_id).trim() === String(id).trim() && r.current_status !== 'CANCELLED'
+    )
+  )
+
   const getStatusBadge = (status: string) => {
     type BadgeConfig = { bg: string; text: string; label: string; icon: typeof CheckCircle }
     const badges: Record<string, BadgeConfig> = {
@@ -277,7 +293,13 @@ export default function EventDetail() {
       {registrationData && (
         <RegistrationSuccessModal
           isOpen={showSuccessModal}
-          onClose={() => {
+          onClose={async () => {
+            // Refetch registrations when user dismisses the success modal
+            try {
+              await refetchRegs?.()
+            } catch {
+              // ignore errors
+            }
             setShowSuccessModal(false)
             setRegistrationData(null)
           }}
@@ -290,11 +312,18 @@ export default function EventDetail() {
         {/* Back Button */}
         <div className='max-w-6xl mx-auto px-6 pt-8'>
           <button
-            onClick={() => navigate('/events')}
+            onClick={() =>
+              // If navigated here from My Registrations, go back to that page
+              (location.state as any)?.from === 'my-events' ? navigate('/my-events') : navigate('/events')
+            }
             className='flex items-center gap-2 text-gray-600 hover:text-gray-900 transition group'
           >
             <ArrowLeft className='w-5 h-5 group-hover:-translate-x-1 transition-transform' />
-            <span className='font-medium'>Quay lại danh sách sự kiện</span>
+            <span className='font-medium'>
+              {(location.state as any)?.from === 'my-events'
+                ? 'Quay lại sự kiện của tôi'
+                : 'Quay lại danh sách sự kiện'}
+            </span>
           </button>
         </div>
 
@@ -397,7 +426,16 @@ export default function EventDetail() {
 
               {/* Register Button */}
               <div className='border-t border-gray-200 pt-8'>
-                {canRegister ? (
+                {isRegistered ? (
+                  <div className='w-full md:w-auto px-8 py-4 bg-green-50 border border-green-200 text-green-700 font-bold text-lg rounded-xl flex items-center gap-3 justify-center'>
+                    <CheckCircle className='w-6 h-6' />
+                    {event.current_status === 'ENDED'
+                      ? 'Sự kiện này đã kết thúc'
+                      : event.current_status === 'ONGOING'
+                        ? 'Sự kiện đang diễn ra'
+                        : 'Bạn đã đăng ký sự kiện này'}
+                  </div>
+                ) : canRegister ? (
                   <button
                     onClick={handleRegister}
                     disabled={registering}

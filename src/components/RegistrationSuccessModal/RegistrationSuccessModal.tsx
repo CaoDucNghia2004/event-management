@@ -94,12 +94,12 @@ export default function RegistrationSuccessModal({ isOpen, onClose, registration
                 {copied ? <Check className='w-5 h-5' /> : <Copy className='w-5 h-5' />}
               </button>
             </div>
-            <p className='text-xs text-gray-600 mt-2'>💡 Lưu mã này để điểm danh khi tham gia sự kiện</p>
+            <p className='text-xs text-gray-600 mt-2'>Lưu mã này để điểm danh khi tham gia sự kiện</p>
           </div>
 
           {/* Instructions */}
           <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
-            <p className='text-sm font-semibold text-yellow-800 mb-2'>📌 Lưu ý quan trọng:</p>
+            <p className='text-sm font-semibold text-yellow-800 mb-2'>Lưu ý quan trọng:</p>
             <ul className='text-sm text-yellow-700 space-y-1'>
               {isConfirmed ? (
                 <>
