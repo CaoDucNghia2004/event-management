@@ -40,8 +40,10 @@ export default function ManageNotifications() {
       const response = await notificationApiRequests.getAll()
       const notificationsData = response.data.data.data || response.data.data || []
       setNotifications(notificationsData)
+      return notificationsData
     } catch (err: any) {
       console.error('Error fetching notifications:', err)
+      return []
     } finally {
       setIsLoading(false)
     }
@@ -458,8 +460,19 @@ export default function ManageNotifications() {
           notification={editingNotification}
           eventTitle={selectedEvent.title}
           onClose={() => setEditingNotification(null)}
-          onSuccess={() => {
-            fetchNotifications()
+          onSuccess={async () => {
+            const notificationsData = await fetchNotifications()
+            if (selectedEvent) {
+              const eventNotifications = (notificationsData || []).filter(
+                (n: Notification) => String(n.event_id).trim() === String(selectedEvent.id).trim()
+              )
+              setSelectedEvent({
+                ...selectedEvent,
+                notifications: eventNotifications.sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
+              })
+            }
             setEditingNotification(null)
           }}
         />
