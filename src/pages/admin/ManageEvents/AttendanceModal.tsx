@@ -51,8 +51,29 @@ export default function AttendanceModal({ event, onClose }: AttendanceModalProps
   })
 
   // Filter registrations theo event_id ở frontend (vì backend trả về tất cả)
+  // Dedupe theo user_id bằng cách chọn bản ghi mới nhất (updated_at hoặc created_at),
+  // sau đó loại bỏ những user có latest record là CANCELLED.
   const allRegistrations = data?.registrations || []
-  const registrations = allRegistrations.filter((r) => r.event_id === event.id)
+  const regsForEvent = allRegistrations.filter((r) => String(r.event_id).trim() === String(event.id).trim())
+
+  // Dedupe by user: keep the most recent record per user
+  const latestByUser = new Map<string, (typeof regsForEvent)[number]>()
+  for (const r of regsForEvent) {
+    const key = String(r.user_id)
+    const existing = latestByUser.get(key)
+    if (!existing) {
+      latestByUser.set(key, r)
+      continue
+    }
+    const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime()
+    const rTime = new Date(r.updated_at ?? r.created_at).getTime()
+    if (rTime > existingTime) {
+      latestByUser.set(key, r)
+    }
+  }
+
+  // Keep only users whose latest record is not CANCELLED
+  const registrations = Array.from(latestByUser.values()).filter((r) => r.current_status !== 'CANCELLED')
   const attendedList = registrations.filter((r) => r.is_attended === true)
   const notAttendedList = registrations.filter((r) => r.is_attended !== true)
 
