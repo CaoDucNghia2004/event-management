@@ -12,7 +12,7 @@ interface AuthState {
   setAccessToken: (token: string | null) => void
   logout: () => void
 }
-// dczcx
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({

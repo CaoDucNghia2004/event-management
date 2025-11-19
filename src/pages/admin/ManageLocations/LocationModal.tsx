@@ -3,6 +3,7 @@ import { useMutation } from '@apollo/client/react'
 import { CREATE_LOCATION, UPDATE_LOCATION } from '../../../graphql/mutations/locationMutations'
 import { MapPin, Building2, Map, Users } from 'lucide-react'
 import Swal from 'sweetalert2'
+import { showGqlError } from '../../../utils/showGqlError'
 
 interface LocationDetail {
   id: string
@@ -38,12 +39,13 @@ export default function LocationModal({ location, onClose }: LocationModalProps)
       onClose()
     },
     onError: (error) => {
-      Swal.fire({
-        icon: 'error',
-        title: 'Lỗi!',
-        text: error.message,
-        confirmButtonText: 'Đóng'
-      })
+      // Swal.fire({
+      //   icon: 'error',
+      //   title: 'Lỗi!',
+      //   text: error.message,
+      //   confirmButtonText: 'Đóng'
+      // })
+      showGqlError(error)
     }
   })
 
@@ -58,12 +60,14 @@ export default function LocationModal({ location, onClose }: LocationModalProps)
       onClose()
     },
     onError: (error) => {
-      Swal.fire({
-        icon: 'error',
-        title: 'Lỗi!',
-        text: error.message,
-        confirmButtonText: 'Đóng'
-      })
+      // Swal.fire({
+      //   icon: 'error',
+      //   title: 'Lỗi!',
+      //   text: error.message,
+      //   confirmButtonText: 'Đóng'
+      // })
+
+      showGqlError(error)
     }
   })
 

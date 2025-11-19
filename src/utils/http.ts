@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios'
 import config from '../constants/config'
 import { getAccessTokenFromLS, setAccessTokenToLS, clearAccessTokenFromLS } from './utils'
+import { handleApiError } from './handleApiError'
 
 class Http {
   instance: AxiosInstance
@@ -21,6 +22,7 @@ class Http {
         if (token && token.trim() !== '' && config.headers) {
           config.headers.Authorization = `Bearer ${token}`
         }
+
         return config
       },
       (error) => Promise.reject(error)
@@ -37,6 +39,12 @@ class Http {
         return response
       },
       (error) => {
+        // ChỈ xử lý lỗi phân quyền (Forbidden)
+        const handled = handleApiError(error)
+        if (handled) {
+          return Promise.reject(null)
+        }
+
         if (error.response?.status === 401) {
           clearAccessTokenFromLS()
         }

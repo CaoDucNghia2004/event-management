@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router'
 import type { Registration, RegistrationsByUserData } from '../../../types/registration.types'
 import type { FeedbacksByUserData } from '../../../types/feedback.types'
 import FeedbackModal from '../../../components/FeedbackModal'
+import { showGqlError } from '../../../utils/showGqlError'
 
 export default function MyRegistrations() {
   const { user, setUser } = useAuthStore()
@@ -58,6 +59,12 @@ export default function MyRegistrations() {
     skip: !userId,
     fetchPolicy: 'network-only' // Luôn fetch data mới từ server
   })
+
+  useEffect(() => {
+    if (error) {
+      showGqlError(error)
+    }
+  }, [error])
 
   // Query danh sách feedbacks của user
   const { data: feedbacksData, refetch: refetchFeedbacks } = useQuery<FeedbacksByUserData>(GET_FEEDBACKS_BY_USER, {

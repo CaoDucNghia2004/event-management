@@ -19,6 +19,7 @@ import type { GraphQLError } from 'graphql'
 import config from '../constants/config'
 import { getAccessTokenFromLS, setAccessTokenToLS } from './utils'
 import authApiRequests from '../apiRequests/auth'
+import Swal from 'sweetalert2'
 
 const httpLink = new HttpLink({
   uri: config.graphqlUrl
@@ -100,6 +101,13 @@ const errorLink = onError(
                 window.location.href = '/login'
                 observer.complete()
               })
+          })
+        }
+        if (errorMessage.includes('Forbidden')) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Không có quyền truy cập',
+            text: errorMessage
           })
         }
       }

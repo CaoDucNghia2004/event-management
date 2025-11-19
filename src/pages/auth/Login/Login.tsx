@@ -74,9 +74,6 @@ export default function Login() {
 
         setEmail(account.email)
 
-        setAccessToken(access_token)
-        setAccessTokenToLS(access_token)
-
         // Kiểm tra tài khoản đã được kích hoạt chưa
         if (!account.is_active) {
           // KHÔNG lưu user vào store nếu chưa active
@@ -98,6 +95,10 @@ export default function Login() {
           setCooldown(180)
           return
         }
+
+        // Chỉ lưu token và user khi tài khoản đã active
+        setAccessToken(access_token)
+        setAccessTokenToLS(access_token)
 
         // Nếu tài khoản đã active thì mới lưu user
         setUser(account)

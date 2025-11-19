@@ -20,42 +20,8 @@ import ManageNotifications from './pages/admin/ManageNotifications'
 import Papers from './pages/user/Papers'
 import PaperDetail from './pages/user/PaperDetail'
 import Messages from './pages/user/Messages'
-
-// export default function useRouteElements() {
-//   const routeElements = useRoutes([
-//     {
-//       path: '/',
-//       element: (
-//         <MainLayout>
-//           <Home />
-//         </MainLayout>
-//       )
-//     },
-//     {
-//       element: <PublicOnlyRoute />,
-//       children: [
-//         { path: '/login', element: <Login /> },
-//         { path: '/register', element: <Register /> },
-//         { path: '/forgot-password', element: <ForgotPassword /> }
-//       ]
-//     },
-//     {
-//       element: <PrivateRoute />,
-//       children: [
-//         {
-//           path: '/profile',
-//           element: (
-//             <MainLayout>
-//               <Profile />
-//             </MainLayout>
-//           )
-//         }
-//       ]
-//     }
-//   ])
-
-//   return routeElements
-// }
+import ManageStudents from './pages/admin/ManageUsers/ManageStudents'
+import ManageLecturers from './pages/admin/ManageUsers/ManageLecturers'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -180,6 +146,22 @@ export default function useRouteElements() {
           element: (
             <MainLayoutAdmin>
               <ManageNotifications />
+            </MainLayoutAdmin>
+          )
+        },
+        {
+          path: '/admin/users/students',
+          element: (
+            <MainLayoutAdmin>
+              <ManageStudents />
+            </MainLayoutAdmin>
+          )
+        },
+        {
+          path: '/admin/users/lecturers',
+          element: (
+            <MainLayoutAdmin>
+              <ManageLecturers />
             </MainLayoutAdmin>
           )
         }
