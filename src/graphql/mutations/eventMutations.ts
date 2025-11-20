@@ -12,6 +12,7 @@ export const CREATE_EVENT = gql`
     $capacity: Int!
     $waiting_capacity: Int
     $image_url: String
+    $speakers: [SpeakerInput!]
   ) {
     createEvent(
       title: $title
@@ -24,6 +25,7 @@ export const CREATE_EVENT = gql`
       capacity: $capacity
       waiting_capacity: $waiting_capacity
       image_url: $image_url
+      speakers: $speakers
     ) {
       id
       title
@@ -38,6 +40,13 @@ export const CREATE_EVENT = gql`
       image_url
       current_status
       current_approval_status
+      speakers {
+        name
+        email
+        phone
+        avatar_url
+        organization
+      }
       created_at
       updated_at
     }
@@ -57,6 +66,7 @@ export const UPDATE_EVENT = gql`
     $capacity: Int
     $waiting_capacity: Int
     $image_url: String
+    $speakers: [SpeakerInput!]
   ) {
     updateEvent(
       id: $id
@@ -70,6 +80,7 @@ export const UPDATE_EVENT = gql`
       capacity: $capacity
       waiting_capacity: $waiting_capacity
       image_url: $image_url
+      speakers: $speakers
     ) {
       id
       title
@@ -84,6 +95,13 @@ export const UPDATE_EVENT = gql`
       image_url
       current_status
       current_approval_status
+      speakers {
+        name
+        email
+        phone
+        avatar_url
+        organization
+      }
       created_at
       updated_at
     }

@@ -33,6 +33,13 @@ export const GET_ALL_EVENTS = gql`
         sequence
         changed_at
       }
+      speakers {
+        name
+        email
+        phone
+        avatar_url
+        organization
+      }
       created_at
       updated_at
     }
@@ -60,6 +67,13 @@ export const GET_EVENT_BY_ID = gql`
         building
         address
         capacity
+      }
+      speakers {
+        name
+        email
+        phone
+        avatar_url
+        organization
       }
       created_at
       updated_at
