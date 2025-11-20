@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { GET_PAPERS } from '../../../graphql/queries/paperQueries'
+import { GET_ALL_EVENTS } from '../../../graphql/queries/eventQueries'
 import { DELETE_PAPER } from '../../../graphql/mutations/paperMutations'
 import type { PapersResponse, Paper } from '../../../types/paper.types'
+import type { EventsData } from '../../../types/event.types'
 import { Edit2, Trash2, Plus, Eye, FileText, Download } from 'lucide-react'
 import PaperModal from './PaperModal'
 import PaperDetailModal from './PaperDetailModal'
@@ -24,6 +26,7 @@ const ManagePapers = () => {
   const userEmail = user?.email
 
   const { loading, error, data, refetch } = useQuery<PapersResponse>(GET_PAPERS)
+  const { data: eventsData } = useQuery<EventsData>(GET_ALL_EVENTS)
 
   const [deletePaper] = useMutation(DELETE_PAPER, {
     onCompleted: async () => {
@@ -102,14 +105,16 @@ const ManagePapers = () => {
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedPapers = filteredPapers?.slice(startIndex, startIndex + itemsPerPage)
 
-  // Get unique events for filter - loại bỏ duplicate bằng cách dùng Map với event_id làm key
-  const eventsMap = new Map()
-  data?.papers.forEach((paper) => {
-    if (paper.event && !eventsMap.has(paper.event_id)) {
-      eventsMap.set(paper.event_id, paper.event)
-    }
-  })
-  const events = Array.from(eventsMap.values())
+  // Lọc events theo role: ADMIN xem tất cả, ORGANIZER chỉ xem events của mình
+  const filteredEvents = useMemo(() => {
+    if (!eventsData?.events) return []
+
+    // ADMIN thấy tất cả events
+    if (isAdmin) return eventsData.events
+
+    // ORGANIZER chỉ thấy events họ tạo
+    return eventsData.events.filter((event) => event.created_by === userEmail)
+  }, [eventsData, isAdmin, userEmail])
 
   if (loading) {
     return (
@@ -174,15 +179,11 @@ const ManagePapers = () => {
               className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
             >
               <option value=''>Tất cả sự kiện</option>
-              {events.map((event) => {
-                // Tìm paper đầu tiên có event này để lấy event_id
-                const paperWithEvent = data?.papers.find((p) => p.event?.id === event?.id)
-                return (
-                  <option key={event?.id} value={paperWithEvent?.event_id || event?.id}>
-                    {event?.title}
-                  </option>
-                )
-              })}
+              {filteredEvents.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title}
+                </option>
+              ))}
             </select>
           </div>
         </div>

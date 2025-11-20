@@ -97,13 +97,16 @@ export default function ManageNotifications() {
         }
       })
 
-    return mappedEvents
-      .filter((event) => {
-        // Show events that are OPEN, ONGOING, or ENDED (if has notifications)
-        const isActiveEvent = event.current_status === 'OPEN' || event.current_status === 'ONGOING'
-        const isEndedWithMessages = event.current_status === 'ENDED' && event.notifications.length > 0
-        return isActiveEvent || isEndedWithMessages
-      })
+    // Filter by status (before search)
+    const filteredByStatus = mappedEvents.filter((event) => {
+      // Show events that are OPEN, ONGOING, or ENDED (if has notifications)
+      const isActiveEvent = event.current_status === 'OPEN' || event.current_status === 'ONGOING'
+      const isEndedWithMessages = event.current_status === 'ENDED' && event.notifications.length > 0
+      return isActiveEvent || isEndedWithMessages
+    })
+
+    // Filter by search
+    return filteredByStatus
       .filter((event) => {
         // Search filter
         if (searchEvent) {
@@ -269,14 +272,8 @@ export default function ManageNotifications() {
           <div className='px-4 py-3 bg-gray-50 border-b border-gray-200'>
             <div className='flex items-center gap-4 text-sm'>
               <div className='flex items-center gap-2'>
-                <span className='font-semibold text-gray-700'>Tổng số:</span>
-                <span className='px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full font-bold text-xs'>
-                  {eventsData?.events?.length || 0}
-                </span>
-              </div>
-              <div className='flex items-center gap-2'>
                 <span className='font-semibold text-gray-700'>Đang hiển thị:</span>
-                <span className='px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full font-bold text-xs'>
+                <span className='px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full font-bold text-xs'>
                   {eventsWithNotifications.length}
                 </span>
               </div>

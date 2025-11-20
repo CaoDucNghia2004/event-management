@@ -18,6 +18,14 @@ export interface ApprovalHistory {
   changed_at: string
 }
 
+export interface Speaker {
+  name: string
+  email?: string
+  phone?: string
+  avatar_url?: string
+  organization?: string
+}
+
 export interface Event {
   id: string
   title: string
@@ -35,6 +43,7 @@ export interface Event {
   location: Location
   approval_history?: ApprovalHistory[]
   status_history?: StatusHistory[]
+  speakers?: Speaker[]
   created_at: string
   updated_at: string
 }

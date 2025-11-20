@@ -155,6 +155,26 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
             )}
           </div>
 
+          {/* Diễn giả */}
+          {event.speakers && event.speakers.length > 0 && (
+            <div className='mt-6'>
+              <h3 className='text-lg font-bold text-gray-900 mb-3'>Diễn giả</h3>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                {event.speakers.map((speaker, index) => (
+                  <div key={index} className='flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100'>
+                    <User className='w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0' />
+                    <div>
+                      <p className='font-semibold text-gray-900'>{speaker.name}</p>
+                      {speaker.organization && <p className='text-sm text-gray-600 mt-1'>{speaker.organization}</p>}
+                      {speaker.email && <p className='text-sm text-gray-500 mt-1'>{speaker.email}</p>}
+                      {speaker.phone && <p className='text-sm text-gray-500 mt-1'>{speaker.phone}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Thời gian tạo/cập nhật */}
           <div className='border-t pt-4 text-sm text-gray-600'>
             <p>Ngày tạo: {formatDate(event.created_at)}</p>

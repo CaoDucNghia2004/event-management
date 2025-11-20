@@ -69,7 +69,7 @@ export default function RegistrationSuccessModal({ isOpen, onClose, registration
                   isConfirmed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                 }`}
               >
-                {isConfirmed ? '✅ Đã xác nhận' : '⏳ Đang chờ'}
+                {isConfirmed ? 'Đã xác nhận' : 'Đang chờ'}
               </span>
               {isWaiting && registration.queue_order && (
                 <span className='text-sm text-gray-600'>

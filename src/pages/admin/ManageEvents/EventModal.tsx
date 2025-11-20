@@ -25,7 +25,8 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
     topic: '',
     capacity: '',
     waiting_capacity: '',
-    image_url: ''
+    image_url: '',
+    speakers: [{ name: '' }]
   })
   const [imagePreview, setImagePreview] = useState<string>('')
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -87,17 +88,31 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
 
   useEffect(() => {
     if (event) {
+      // Helper function to convert datetime string to local datetime-local format
+      const toLocalDateTimeString = (dateStr: string) => {
+        if (!dateStr) return ''
+        const date = new Date(dateStr)
+        // Get local date components
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${year}-${month}-${day}T${hours}:${minutes}`
+      }
+
       setFormData({
         title: event.title || '',
         description: event.description || '',
         location_id: event.location?.id || '',
-        start_date: event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
-        end_date: event.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : '',
+        start_date: toLocalDateTimeString(event.start_date),
+        end_date: toLocalDateTimeString(event.end_date),
         organizer: event.organizer || '',
         topic: event.topic || '',
         capacity: event.capacity?.toString() || '',
         waiting_capacity: event.waiting_capacity?.toString() || '',
-        image_url: event.image_url || ''
+        image_url: event.image_url || '',
+        speakers: event.speakers && event.speakers.length > 0 ? event.speakers : [{ name: '' }]
       })
       // Set preview for existing image
       if (event.image_url) {
@@ -161,20 +176,26 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
     return true
   }
 
-  const validateDateTime = (startDate: string, endDate: string) => {
+  const validateDateTime = (startDate: string, endDate: string, isEditing: boolean = false) => {
     const errors = { start_date: '', end_date: '' }
     const now = new Date()
     const start = new Date(startDate)
     const end = new Date(endDate)
 
-    // Check if start date is in the past
-    if (start <= now) {
-      errors.start_date = 'Thời gian bắt đầu phải sau thời điểm hiện tại'
+    // Only check if start date is in the past when creating new event
+    // When editing, allow past dates (user might just want to update other fields)
+    if (!isEditing) {
+      // Require start date to be at least 1 day (24 hours) from now
+      const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      if (start < oneDayFromNow) {
+        errors.start_date = 'Thời gian bắt đầu phải cách thời điểm hiện tại ít nhất 1 ngày (để có thời gian duyệt)'
+      }
     }
 
-    // Check if end date is after start date
-    if (end <= start) {
-      errors.end_date = 'Thời gian kết thúc phải sau thời gian bắt đầu'
+    // Check if end date is at least 1 hour after start date
+    const oneHourAfterStart = new Date(start.getTime() + 60 * 60 * 1000)
+    if (end < oneHourAfterStart) {
+      errors.end_date = 'Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 1 tiếng'
     }
 
     setDateTimeErrors(errors)
@@ -184,8 +205,9 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    // Validate datetime before submitting
-    if (!validateDateTime(formData.start_date, formData.end_date)) {
+    // Only validate datetime when creating new event
+    // When editing, datetime fields are disabled so no need to validate
+    if (!event && !validateDateTime(formData.start_date, formData.end_date, false)) {
       Swal.fire({
         icon: 'error',
         title: 'Lỗi thời gian',
@@ -218,6 +240,20 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
         ? parseInt(waitingCapacityValue)
         : undefined // Use undefined instead of null to omit field
 
+    // Filter valid speakers (only those with name) and remove __typename
+    const validSpeakers = formData.speakers
+      .filter((s) => s.name.trim() !== '')
+      .map((speaker) => {
+        // Remove __typename and other Apollo Client fields
+        const { name, email, phone, avatar_url, organization } = speaker as any
+        const cleanSpeaker: any = { name }
+        if (email) cleanSpeaker.email = email
+        if (phone) cleanSpeaker.phone = phone
+        if (avatar_url) cleanSpeaker.avatar_url = avatar_url
+        if (organization) cleanSpeaker.organization = organization
+        return cleanSpeaker
+      })
+
     const variables: any = {
       title: formData.title,
       description: formData.description || null,
@@ -227,7 +263,8 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
       organizer: formData.organizer,
       topic: formData.topic || null,
       capacity: parseInt(formData.capacity),
-      ...(shouldSendImageUrl && { image_url: formData.image_url || null })
+      ...(shouldSendImageUrl && { image_url: formData.image_url || null }),
+      speakers: validSpeakers.length > 0 ? validSpeakers : undefined
     }
 
     // Only include waiting_capacity if it has a valid value
@@ -341,6 +378,23 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
     }
   }
 
+  // Speaker handlers
+  const addSpeaker = () => {
+    setFormData((prev) => ({ ...prev, speakers: [...prev.speakers, { name: '' }] }))
+  }
+
+  const removeSpeaker = (index: number) => {
+    setFormData((prev) => ({ ...prev, speakers: prev.speakers.filter((_, i) => i !== index) }))
+  }
+
+  const updateSpeaker = (index: number, field: string, value: string) => {
+    setFormData((prev) => {
+      const newSpeakers = [...prev.speakers]
+      newSpeakers[index] = { ...newSpeakers[index], [field]: value }
+      return { ...prev, speakers: newSpeakers }
+    })
+  }
+
   const modal = (
     <div className='fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fadeIn'>
       <div className='absolute inset-0 bg-gray-900/50 backdrop-blur-sm' onClick={onClose}></div>
@@ -422,21 +476,25 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                   type='datetime-local'
                   required
                   value={formData.start_date}
+                  disabled={event !== null}
                   onChange={(e) => {
                     setFormData((prev) => ({ ...prev, start_date: e.target.value }))
                     // Validate on change
                     if (e.target.value && formData.end_date) {
-                      validateDateTime(e.target.value, formData.end_date)
+                      validateDateTime(e.target.value, formData.end_date, event !== null)
                     }
                   }}
                   className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                     dateTimeErrors.start_date
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:ring-blue-500'
-                  }`}
+                  } ${event ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
               </div>
               {dateTimeErrors.start_date && <p className='mt-1 text-sm text-red-600'>{dateTimeErrors.start_date}</p>}
+              {event && (
+                <p className='mt-1 text-sm text-gray-500'>Không thể thay đổi thời gian khi chỉnh sửa sự kiện</p>
+              )}
             </div>
             <div>
               <label className='block text-sm font-semibold text-gray-700 mb-2'>
@@ -448,21 +506,25 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                   type='datetime-local'
                   required
                   value={formData.end_date}
+                  disabled={event !== null}
                   onChange={(e) => {
                     setFormData((prev) => ({ ...prev, end_date: e.target.value }))
                     // Validate on change
                     if (formData.start_date && e.target.value) {
-                      validateDateTime(formData.start_date, e.target.value)
+                      validateDateTime(formData.start_date, e.target.value, event !== null)
                     }
                   }}
                   className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                     dateTimeErrors.end_date
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:ring-blue-500'
-                  }`}
+                  } ${event ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
               </div>
               {dateTimeErrors.end_date && <p className='mt-1 text-sm text-red-600'>{dateTimeErrors.end_date}</p>}
+              {event && (
+                <p className='mt-1 text-sm text-gray-500'>Không thể thay đổi thời gian khi chỉnh sửa sự kiện</p>
+              )}
             </div>
           </div>
 
@@ -481,6 +543,43 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
                 className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 placeholder='Nhập tên tổ chức...'
               />
+            </div>
+          </div>
+
+          {/* Diễn giả */}
+          <div>
+            <label className='block text-sm font-semibold text-gray-700 mb-2'>Diễn giả</label>
+            <div className='space-y-2'>
+              {formData.speakers.map((speaker, index) => (
+                <div key={index} className='flex gap-2'>
+                  <div className='relative flex-1'>
+                    <Users className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
+                    <input
+                      type='text'
+                      value={speaker.name}
+                      onChange={(e) => updateSpeaker(index, 'name', e.target.value)}
+                      className='w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      placeholder={`Tên diễn giả ${index + 1}...`}
+                    />
+                  </div>
+                  {formData.speakers.length > 1 && (
+                    <button
+                      type='button'
+                      onClick={() => removeSpeaker(index)}
+                      className='px-3 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition'
+                    >
+                      <X className='w-5 h-5' />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type='button'
+                onClick={addSpeaker}
+                className='w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-500 transition'
+              >
+                + Thêm diễn giả
+              </button>
             </div>
           </div>
 
