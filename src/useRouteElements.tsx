@@ -1,4 +1,4 @@
-import { useRoutes } from 'react-router'
+import { useRoutes, Navigate } from 'react-router'
 import MainLayout from './layouts/MainLayout'
 import MainLayoutAdmin from './layouts/MainLayoutAdmin'
 import Home from './pages/user/Home'
@@ -6,6 +6,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 
 import { PrivateRoute, PublicOnlyRoute } from './routes/ProtectedRoute'
+import { useAuthStore } from './store/useAuthStore'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import Profile from './pages/user/Profile'
 import MyRegistrations from './pages/user/MyRegistrations'
@@ -20,8 +21,16 @@ import ManageNotifications from './pages/admin/ManageNotifications'
 import Papers from './pages/user/Papers'
 import PaperDetail from './pages/user/PaperDetail'
 import Messages from './pages/user/Messages'
-import ManageStudents from './pages/admin/ManageUsers/ManageStudents'
-import ManageLecturers from './pages/admin/ManageUsers/ManageLecturers'
+import ManageUsers from './pages/admin/ManageUsers'
+
+// Component redirect cho /admin
+function AdminRedirect() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes('ADMIN')
+
+  // ADMIN -> Dashboard, ORGANIZER -> Quản lý địa điểm
+  return <Navigate to={isAdmin ? '/admin/dashboard' : '/admin/locations'} replace />
+}
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -102,6 +111,10 @@ export default function useRouteElements() {
         },
         // Admin routes - tạm thời dùng PrivateRoute, sau sẽ thêm AdminRoute
         {
+          path: '/admin',
+          element: <AdminRedirect />
+        },
+        {
           path: '/admin/dashboard',
           element: (
             <MainLayoutAdmin>
@@ -150,18 +163,10 @@ export default function useRouteElements() {
           )
         },
         {
-          path: '/admin/users/students',
+          path: '/admin/users',
           element: (
             <MainLayoutAdmin>
-              <ManageStudents />
-            </MainLayoutAdmin>
-          )
-        },
-        {
-          path: '/admin/users/lecturers',
-          element: (
-            <MainLayoutAdmin>
-              <ManageLecturers />
+              <ManageUsers />
             </MainLayoutAdmin>
           )
         }

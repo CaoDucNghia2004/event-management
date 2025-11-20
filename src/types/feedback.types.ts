@@ -20,6 +20,7 @@ export interface Feedback {
   event?: {
     id: string
     title: string
+    created_by: string
   }
 }
 

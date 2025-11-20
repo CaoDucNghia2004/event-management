@@ -21,6 +21,7 @@ import type { Registration, RegistrationsByUserData } from '../../../types/regis
 import type { FeedbacksByUserData } from '../../../types/feedback.types'
 import FeedbackModal from '../../../components/FeedbackModal'
 import { showGqlError } from '../../../utils/showGqlError'
+import MyEventsCalendarModal from '../../../components/MyEventsCalendarModal'
 
 export default function MyRegistrations() {
   const { user, setUser } = useAuthStore()
@@ -40,6 +41,9 @@ export default function MyRegistrations() {
   // Feedback modal states
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [selectedFeedbackRegistration, setSelectedFeedbackRegistration] = useState<Registration | null>(null)
+
+  // Calendar modal state
+  const [showCalendarModal, setShowCalendarModal] = useState(false)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -340,9 +344,18 @@ export default function MyRegistrations() {
       <div className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'>
         <div className='max-w-7xl mx-auto px-6'>
           {/* Header */}
-          <div className='mb-10'>
-            <h1 className='text-4xl font-bold text-gray-900 mb-3'>Đăng ký của tôi</h1>
-            <p className='text-lg text-gray-600'>Quản lý các sự kiện bạn đã đăng ký tham gia</p>
+          <div className='mb-10 flex items-center justify-between'>
+            <div>
+              <h1 className='text-4xl font-bold text-gray-900 mb-3'>Đăng ký của tôi</h1>
+              <p className='text-lg text-gray-600'>Quản lý các sự kiện bạn đã đăng ký tham gia</p>
+            </div>
+            <button
+              onClick={() => setShowCalendarModal(true)}
+              className='flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl'
+            >
+              <Calendar className='w-5 h-5' />
+              Lịch của tôi
+            </button>
           </div>
 
           {/* Search and Filter Section */}
@@ -711,6 +724,16 @@ export default function MyRegistrations() {
           eventId={selectedFeedbackRegistration.event_id}
           eventTitle={selectedFeedbackRegistration.event?.title || 'Sự kiện'}
           onSuccess={handleFeedbackSuccess}
+        />
+      )}
+
+      {/* Calendar Modal */}
+      {showCalendarModal && (
+        <MyEventsCalendarModal
+          isOpen={showCalendarModal}
+          onClose={() => setShowCalendarModal(false)}
+          registrations={registrations}
+          refetch={refetch}
         />
       )}
     </>

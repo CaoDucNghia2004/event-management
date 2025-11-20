@@ -23,6 +23,7 @@ export const GET_FEEDBACKS = gql`
       event {
         id
         title
+        created_by
       }
     }
   }

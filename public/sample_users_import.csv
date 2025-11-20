@@ -1,0 +1,7 @@
+Name,Email,Phone,Is Active,Reputation Score,Roles
+Nguyễn Văn A,nguyenvana@hust.edu.vn,0123456789,Yes,70,USER
+Trần Thị B,tranthib@hust.edu.vn,0987654321,Yes,85,USER
+Lê Văn C,levanc@hust.edu.vn,0912345678,Yes,60,USER
+Phạm Thị D,phamthid@hust.edu.vn,0909876543,No,50,USER
+Hoàng Văn E,hoangvane@hust.edu.vn,0898765432,Yes,90,ORGANIZER
+

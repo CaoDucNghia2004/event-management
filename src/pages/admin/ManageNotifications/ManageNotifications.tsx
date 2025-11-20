@@ -10,6 +10,7 @@ import { vi } from 'date-fns/locale'
 import notificationApiRequests from '../../../apiRequests/notification'
 import { getUserIdFromToken } from '../../../utils/utils'
 import EditNotificationModal from './EditNotificationModal'
+import { useAuthStore } from '../../../store/useAuthStore'
 
 interface EventsData {
   events?: Event[]
@@ -29,6 +30,11 @@ export default function ManageNotifications() {
   const [isLoading, setIsLoading] = useState(true)
   const [editingNotification, setEditingNotification] = useState<Notification | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Lấy thông tin user để kiểm tra role
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const userEmail = user?.email
 
   // Fetch events
   const { data: eventsData, loading: eventsLoading } = useQuery<EventsData>(GET_ALL_EVENTS)
@@ -69,22 +75,27 @@ export default function ManageNotifications() {
   const eventsWithNotifications = useMemo(() => {
     if (!eventsData?.events) return []
 
-    const mappedEvents = eventsData.events.map((event) => {
-      const eventNotifications = notifications.filter((n) => {
-        // Convert both to string and trim to ensure comparison works
-        const notifEventId = String(n.event_id).trim()
-        const eventId = String(event.id).trim()
-        return notifEventId === eventId
+    const mappedEvents = eventsData.events
+      // Lọc theo role: ADMIN xem tất cả, ORGANIZER chỉ xem events họ tạo
+      .filter((event) => {
+        return isAdmin || event.created_by === userEmail
       })
+      .map((event) => {
+        const eventNotifications = notifications.filter((n) => {
+          // Convert both to string and trim to ensure comparison works
+          const notifEventId = String(n.event_id).trim()
+          const eventId = String(event.id).trim()
+          return notifEventId === eventId
+        })
 
-      return {
-        ...event,
-        notifications: eventNotifications.sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        ),
-        unreadCount: 0 // Can be implemented later
-      }
-    })
+        return {
+          ...event,
+          notifications: eventNotifications.sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          ),
+          unreadCount: 0 // Can be implemented later
+        }
+      })
 
     return mappedEvents
       .filter((event) => {
@@ -112,7 +123,7 @@ export default function ManageNotifications() {
         const bLatest = b.notifications[b.notifications.length - 1]?.created_at || b.created_at
         return new Date(bLatest).getTime() - new Date(aLatest).getTime()
       })
-  }, [eventsData, notifications, searchEvent])
+  }, [eventsData, notifications, searchEvent, isAdmin, userEmail])
 
   // Handle send message
   const handleSendMessage = async () => {

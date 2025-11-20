@@ -130,3 +130,12 @@ body {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* SweetAlert2 High Z-Index */
+.swal-high-zindex {
+  z-index: 99999 !important;
+}
+
+.swal-high-zindex .swal2-container {
+  z-index: 99999 !important;
+}

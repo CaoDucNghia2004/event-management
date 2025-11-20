@@ -33,27 +33,33 @@ export default function MainLayoutAdmin({ children }: Props) {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
 
-  const menuItems = useMemo(
-    () => [
-      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  const isAdmin = user?.roles?.includes('ADMIN')
+
+  const menuItems = useMemo(() => {
+    const allItems = [
+      { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
       { path: '/admin/locations', label: 'Quản lý địa điểm', icon: MapPin },
       { path: '/admin/events', label: 'Quản lý sự kiện', icon: Calendar },
       { path: '/admin/papers', label: 'Quản lý bài báo', icon: FileText },
-
-      {
-        label: 'Quản lý người dùng',
-        icon: Users,
-        children: [
-          { path: '/admin/users/students', label: 'Quản lý sinh viên', icon: UserCircle },
-          { path: '/admin/users/lecturers', label: 'Quản lý giảng viên', icon: GraduationCap }
-        ]
-      },
-
+      { path: '/admin/users', label: 'Quản lý người dùng', icon: Users, adminOnly: true },
       { path: '/admin/feedbacks', label: 'Quản lý Feedback', icon: MessageSquare },
       { path: '/admin/notifications', label: 'Quản lý Thông báo', icon: Bell }
-    ],
-    []
-  )
+    ]
+
+    // Lọc menu items dựa trên role
+    return allItems.filter((item) => !item.adminOnly || isAdmin)
+  }, [isAdmin])
+
+  // Redirect ORGANIZER từ /admin/dashboard về trang đầu tiên họ có quyền
+  useEffect(() => {
+    if (!isAdmin && location.pathname === '/admin/dashboard') {
+      // Lấy trang đầu tiên ORGANIZER có quyền truy cập
+      const firstAvailablePath = menuItems[0]?.path
+      if (firstAvailablePath) {
+        navigate(firstAvailablePath, { replace: true })
+      }
+    }
+  }, [location.pathname, isAdmin, menuItems, navigate])
 
   useEffect(() => {
     menuItems.forEach((item) => {

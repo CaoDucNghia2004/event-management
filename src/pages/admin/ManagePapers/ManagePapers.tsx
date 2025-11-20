@@ -7,6 +7,7 @@ import { Edit2, Trash2, Plus, Eye, FileText, Download } from 'lucide-react'
 import PaperModal from './PaperModal'
 import PaperDetailModal from './PaperDetailModal'
 import Swal from 'sweetalert2'
+import { useAuthStore } from '../../../store/useAuthStore'
 
 const ManagePapers = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -16,6 +17,11 @@ const ManagePapers = () => {
   const [filterEvent, setFilterEvent] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Lấy thông tin user để kiểm tra role
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const userEmail = user?.email
 
   const { loading, error, data, refetch } = useQuery<PapersResponse>(GET_PAPERS)
 
@@ -77,9 +83,12 @@ const ManagePapers = () => {
   // Filter and sort papers
   const filteredPapers = data?.papers
     .filter((paper) => {
+      // Lọc theo role: ADMIN xem tất cả, ORGANIZER chỉ xem papers của events họ tạo
+      const matchRole = isAdmin || paper.event?.created_by === userEmail
+
       const matchesTitle = paper.title.toLowerCase().includes(searchTitle.toLowerCase())
       const matchesEvent = filterEvent === '' || paper.event_id === filterEvent
-      return matchesTitle && matchesEvent
+      return matchRole && matchesTitle && matchesEvent
     })
     .sort((a, b) => {
       // Sắp xếp theo ngày tạo từ mới đến cũ (mới nhất trước)

@@ -7,6 +7,7 @@ import { MessageSquare, Star, Search, Filter, ChevronDown, ChevronUp, Calendar }
 
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { useAuthStore } from '../../../store/useAuthStore'
 
 // Interface cho nhóm feedback theo sự kiện
 interface EventFeedbackGroup {
@@ -20,6 +21,11 @@ export default function ManageFeedbacks() {
   const [searchEvent, setSearchEvent] = useState('')
   const [filterRating, setFilterRating] = useState<number | 'all'>('all')
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
+
+  // Lấy thông tin user để kiểm tra role
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const userEmail = user?.email
 
   const { loading, error, data, refetch } = useQuery<FeedbacksData>(GET_FEEDBACKS, {
     fetchPolicy: 'network-only'
@@ -41,6 +47,11 @@ export default function ManageFeedbacks() {
   // Group feedbacks by event
   const groupedFeedbacks = useMemo(() => {
     let feedbacks = data?.feedbacks || []
+
+    // Lọc theo role: ADMIN xem tất cả, ORGANIZER chỉ xem feedbacks của events họ tạo
+    feedbacks = feedbacks.filter((fb) => {
+      return isAdmin || fb.event?.created_by === userEmail
+    })
 
     // Filter by rating first
     if (filterRating !== 'all') {
@@ -94,7 +105,7 @@ export default function ManageFeedbacks() {
       const bLatest = b.feedbacks[0]?.created_at || ''
       return new Date(bLatest).getTime() - new Date(aLatest).getTime()
     })
-  }, [data?.feedbacks, searchEvent, filterRating])
+  }, [data?.feedbacks, searchEvent, filterRating, isAdmin, userEmail])
 
   // Calculate total feedbacks
   const totalFeedbacks = groupedFeedbacks.reduce((sum, group) => sum + group.feedbacks.length, 0)
@@ -189,7 +200,7 @@ export default function ManageFeedbacks() {
           <div className='flex items-center gap-2'>
             <span className='font-semibold text-gray-700'>Tổng số feedback:</span>
             <span className='px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-bold'>
-              {data?.feedbacks.length || 0}
+              {groupedFeedbacks.reduce((sum, group) => sum + group.feedbacks.length, 0)}
             </span>
           </div>
           <div className='flex items-center gap-2'>

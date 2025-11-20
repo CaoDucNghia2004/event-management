@@ -6,6 +6,7 @@ import { Edit2, Trash2, Plus, RotateCw, Calendar } from 'lucide-react'
 import LocationModal from './LocationModal'
 import LocationCalendarModal from './LocationCalendarModal'
 import Swal from 'sweetalert2'
+import { translateMessage } from '../../../utils/translateMessage'
 
 interface LocationDetail {
   id: string
@@ -109,7 +110,7 @@ export default function ManageLocations() {
         Swal.fire({
           icon: 'error',
           title: 'Lỗi!',
-          text: errorMessage,
+          text: translateMessage(errorMessage),
           confirmButtonText: 'Đóng'
         })
       }

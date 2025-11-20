@@ -72,8 +72,10 @@ export default function AttendanceModal({ event, onClose }: AttendanceModalProps
     }
   }
 
-  // Keep only users whose latest record is not CANCELLED
-  const registrations = Array.from(latestByUser.values()).filter((r) => r.current_status !== 'CANCELLED')
+  // Keep only users whose latest record is not CANCELLED and user exists
+  const registrations = Array.from(latestByUser.values()).filter(
+    (r) => r.current_status !== 'CANCELLED' && r.user !== null
+  )
   const attendedList = registrations.filter((r) => r.is_attended === true)
   const notAttendedList = registrations.filter((r) => r.is_attended !== true)
 

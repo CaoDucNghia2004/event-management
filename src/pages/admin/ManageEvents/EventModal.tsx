@@ -287,29 +287,57 @@ const EventModal = ({ event, onClose }: EventModalProps) => {
         console.warn('Preview exists but no file selected for new event')
       }
 
-      // Show success message and close modal after everything completes
-      await Swal.fire({
-        icon: 'success',
-        title: 'Thành công!',
-        text: event ? 'Cập nhật sự kiện thành công!' : 'Thêm sự kiện thành công!',
-        showConfirmButton: false,
-        timer: 1500
-      })
-      onClose()
+      // Show success message FIRST, then close modal
+      // Đợi một chút để đảm bảo modal animation hoàn tất
+      setTimeout(async () => {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: event ? 'Cập nhật sự kiện thành công!' : 'Thêm sự kiện thành công!',
+          showConfirmButton: false,
+          timer: 1500,
+          customClass: {
+            container: 'swal-high-zindex'
+          }
+        })
+
+        // Đóng modal SAU KHI alert đã đóng
+        onClose()
+      }, 100)
     } catch (error) {
-      const errorMessage =
-        (error as any)?.errors?.[0]?.details?.message ||
-        (error as any)?.errors?.[0]?.extensions?.reason ||
-        (error as any)?.errors?.[0]?.message ||
-        (error as any)?.message ||
-        'Đã xảy ra lỗi không xác định'
-      console.error('Error:', errorMessage)
-      Swal.fire({
-        icon: 'error',
-        title: 'Lỗi!',
-        text: errorMessage,
-        confirmButtonText: 'Đóng'
-      })
+      console.error('Full error object:', error)
+
+      // Xử lý nhiều loại lỗi từ GraphQL
+      let errorMessage = 'Đã xảy ra lỗi không xác định'
+
+      const graphqlError = (error as any)?.graphQLErrors?.[0] || (error as any)?.errors?.[0]
+
+      if (graphqlError) {
+        // Thử lấy message từ nhiều nguồn
+        errorMessage =
+          graphqlError?.extensions?.validation?.['location_id']?.[0] ||
+          graphqlError?.extensions?.reason ||
+          graphqlError?.details?.message ||
+          graphqlError?.message ||
+          errorMessage
+      } else if ((error as any)?.message) {
+        errorMessage = (error as any).message
+      }
+
+      console.error('Error message:', errorMessage)
+
+      // Đợi một chút để tránh conflict với animation
+      setTimeout(() => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: errorMessage,
+          confirmButtonText: 'Đóng',
+          customClass: {
+            container: 'swal-high-zindex'
+          }
+        })
+      }, 100)
     }
   }
 
