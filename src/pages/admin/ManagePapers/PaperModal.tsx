@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
 import { CREATE_PAPER, UPDATE_PAPER } from '../../../graphql/mutations/paperMutations'
 import { GET_ALL_EVENTS } from '../../../graphql/queries/eventQueries'
@@ -7,6 +7,7 @@ import type { EventsData } from '../../../types/event.types'
 import { X, Upload, FileText, Eye } from 'lucide-react'
 import Swal from 'sweetalert2'
 import config from '../../../constants/config'
+import { useAuthStore } from '../../../store/useAuthStore'
 
 interface PaperModalProps {
   paper: Paper | null
@@ -28,7 +29,23 @@ export default function PaperModal({ paper, onClose }: PaperModalProps) {
   const [uploading, setUploading] = useState(false)
   const [removePdf, setRemovePdf] = useState(false) // Flag để xóa PDF
 
+  // Lấy thông tin user để lọc events
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const userEmail = user?.email
+
   const { data: eventsData } = useQuery<EventsData>(GET_ALL_EVENTS)
+
+  // Lọc events theo role: ADMIN xem tất cả, ORGANIZER chỉ xem events của mình
+  const filteredEvents = useMemo(() => {
+    if (!eventsData?.events) return []
+
+    // ADMIN thấy tất cả events
+    if (isAdmin) return eventsData.events
+
+    // ORGANIZER chỉ thấy events họ tạo
+    return eventsData.events.filter((event) => event.created_by === userEmail)
+  }, [eventsData, isAdmin, userEmail])
 
   useEffect(() => {
     if (paper) {
@@ -360,7 +377,7 @@ export default function PaperModal({ paper, onClose }: PaperModalProps) {
               required
             >
               <option value=''>-- Chọn sự kiện --</option>
-              {eventsData?.events.map((event) => (
+              {filteredEvents.map((event) => (
                 <option key={event.id} value={event.id}>
                   {event.title}
                 </option>

@@ -1,4 +1,5 @@
 import Swal from 'sweetalert2'
+import { translateMessage } from './translateMessage'
 
 export function showGqlError(error: any) {
   const message =
@@ -11,7 +12,7 @@ export function showGqlError(error: any) {
   Swal.fire({
     icon: 'error',
     title: 'Lỗi!',
-    text: message,
+    text: translateMessage(message),
     confirmButtonText: 'Đóng'
   })
 }

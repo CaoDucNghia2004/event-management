@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import type { Event } from '../../../types/event.types'
 import type { Paper } from '../../../types/paper.types'
+import { useAuthStore } from '../../../store/useAuthStore'
 import './Dashboard.css'
 
 // Type definitions for GraphQL responses
@@ -31,21 +32,29 @@ interface PapersData {
   papers?: Paper[]
 }
 
+interface User {
+  id: string
+  name: string
+  email: string
+  roles: string[]
+}
+
 interface UsersData {
-  users?: {
-    paginatorInfo?: {
-      total?: number
-    }
-  }
+  getAllUser?: User[]
 }
 
 export default function Dashboard() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes('ADMIN')
+
   const { data: eventsData, loading: eventsLoading } = useQuery<EventsData>(GET_ALL_EVENTS)
   const { data: papersData, loading: papersLoading } = useQuery<PapersData>(GET_PAPERS)
-  const { data: usersData, loading: usersLoading } = useQuery<UsersData>(GET_ALL_USERS)
+  const { data: usersData, loading: usersLoading } = useQuery<UsersData>(GET_ALL_USERS, {
+    skip: !isAdmin // Chỉ ADMIN mới được gọi query này
+  })
 
   const totalEvents = eventsData?.events?.length || 0
-  const totalUsers = usersData?.users?.paginatorInfo?.total || 0
+  const totalUsers = usersData?.getAllUser?.length || 0
   const totalPapers = papersData?.papers?.length || 0
   const pendingEvents = eventsData?.events?.filter((e: Event) => e.current_approval_status === 'WAITING').length || 0
 
@@ -60,7 +69,7 @@ export default function Dashboard() {
   const approvedEvents = eventsData?.events?.filter((e: Event) => e.current_approval_status === 'APPROVED').length || 0
   const rejectedEvents = eventsData?.events?.filter((e: Event) => e.current_approval_status === 'REJECTED').length || 0
 
-  const stats = [
+  const allStats = [
     {
       title: 'Tổng sự kiện',
       value: totalEvents,
@@ -75,7 +84,8 @@ export default function Dashboard() {
       icon: Users,
       gradient: 'from-green-500 to-green-600',
       bgGradient: 'from-green-50 to-green-100',
-      loading: usersLoading
+      loading: usersLoading,
+      adminOnly: true // Chỉ ADMIN mới thấy
     },
     {
       title: 'Chờ duyệt',
@@ -95,7 +105,10 @@ export default function Dashboard() {
     }
   ]
 
-  const managementFeatures = [
+  // Lọc stats dựa trên role
+  const stats = allStats.filter((stat) => !stat.adminOnly || isAdmin)
+
+  const allManagementFeatures = [
     {
       title: 'Quản lý địa điểm',
       description: 'Thêm/sửa địa điểm tổ chức',
@@ -130,7 +143,8 @@ export default function Dashboard() {
       link: '/admin/users',
       color: 'green',
       bgColor: 'bg-green-50',
-      iconColor: 'text-green-600'
+      iconColor: 'text-green-600',
+      adminOnly: true // Chỉ ADMIN mới thấy
     },
     {
       title: 'Quản lý Feedback',
@@ -151,6 +165,9 @@ export default function Dashboard() {
       iconColor: 'text-indigo-600'
     }
   ]
+
+  // Lọc features dựa trên role
+  const managementFeatures = allManagementFeatures.filter((feature) => !feature.adminOnly || isAdmin)
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 px-8 pt-16 pb-8'>

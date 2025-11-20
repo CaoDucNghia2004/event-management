@@ -8,6 +8,7 @@ import EventModal from './EventModal'
 import EventDetailModal from './EventDetailModal'
 import AttendanceModal from './AttendanceModal'
 import Swal from 'sweetalert2'
+import { useAuthStore } from '../../../store/useAuthStore'
 
 // Helper function để dịch status sang tiếng Việt
 const translateStatus = (status: string): string => {
@@ -32,6 +33,7 @@ const translateApprovalStatus = (status: string): string => {
 }
 
 const ManageEvents = () => {
+  const { user } = useAuthStore()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null)
@@ -97,15 +99,22 @@ const ManageEvents = () => {
   })
 
   // Filter và sắp xếp với useMemo để đảm bảo re-render
+  // Kiểm tra role của user
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const userEmail = user?.email
+
   const filteredEvents = useMemo(() => {
     const events: Event[] = (data as { events: Event[] })?.events || []
 
     return events
       .filter((event) => {
+        // Nếu là ADMIN thì xem tất cả, nếu là ORGANIZER thì chỉ xem sự kiện của mình
+        const matchRole = isAdmin || event.created_by === userEmail
+
         const matchTitle = event.title.toLowerCase().includes(searchTitle.toLowerCase())
         const matchStatus = !filterStatus || event.current_status === filterStatus
         const matchApproval = !filterApproval || event.current_approval_status === filterApproval
-        return matchTitle && matchStatus && matchApproval
+        return matchRole && matchTitle && matchStatus && matchApproval
       })
       .sort((a, b) => {
         // Sắp xếp theo ngày sự kiện từ lớn đến nhỏ (xa nhất trước)
@@ -114,7 +123,7 @@ const ManageEvents = () => {
 
         return dateB - dateA // Giảm dần (ngày lớn trước, ngày nhỏ sau)
       })
-  }, [data, searchTitle, filterStatus, filterApproval])
+  }, [data, searchTitle, filterStatus, filterApproval, isAdmin, userEmail])
 
   // Pagination
   const totalPages = Math.ceil(filteredEvents.length / itemsPerPage)
@@ -390,8 +399,8 @@ const ManageEvents = () => {
                         </button>
                       )}
 
-                      {/* Phê duyệt/Từ chối - chỉ hiện khi WAITING (backend dùng WAITING chứ không phải PENDING) */}
-                      {event.current_approval_status === 'WAITING' && (
+                      {/* Phê duyệt/Từ chối - chỉ hiện khi WAITING và là ADMIN */}
+                      {isAdmin && event.current_approval_status === 'WAITING' && (
                         <>
                           <button
                             onClick={() => handleApprove(event.id, 'APPROVED')}

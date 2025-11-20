@@ -15,6 +15,7 @@ export const GET_ALL_EVENTS = gql`
       image_url
       current_status
       current_approval_status
+      created_by
       location {
         id
         name

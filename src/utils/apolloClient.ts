@@ -6,6 +6,7 @@ import config from '../constants/config'
 import { getAccessTokenFromLS, setAccessTokenToLS } from './utils'
 import authApiRequests from '../apiRequests/auth'
 import Swal from 'sweetalert2'
+import { translateMessage } from './translateMessage'
 
 const httpLink = new HttpLink({
   uri: config.graphqlUrl
@@ -92,8 +93,8 @@ const errorLink = onError(
         if (errorMessage.includes('Forbidden')) {
           Swal.fire({
             icon: 'error',
-            title: 'Không có quyền truy cập',
-            text: errorMessage
+            title: 'Lỗi!',
+            text: translateMessage(errorMessage)
           })
         }
       }

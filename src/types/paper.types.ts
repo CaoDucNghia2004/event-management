@@ -19,6 +19,7 @@ export interface Paper {
     description?: string
     start_date?: string
     end_date?: string
+    created_by: string
   }
 }
 

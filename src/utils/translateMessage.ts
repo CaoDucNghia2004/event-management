@@ -16,8 +16,12 @@ export function translateMessage(message: string): string {
   if (lowerMessage.includes('user not found')) {
     return 'Người dùng không tồn tại!'
   }
-  if (lowerMessage.includes('email already exists') || lowerMessage.includes('email has already been taken')) {
-    return 'Email đã tồn tại!'
+  if (
+    lowerMessage.includes('email already exists') ||
+    lowerMessage.includes('email has already been taken') ||
+    lowerMessage.includes('email đã tồn tại')
+  ) {
+    return 'Email đã tồn tại trong hệ thống!'
   }
   if (lowerMessage.includes('username already exists') || lowerMessage.includes('username has already been taken')) {
     return 'Tên người dùng đã tồn tại!'
@@ -30,6 +34,14 @@ export function translateMessage(message: string): string {
   }
   if (lowerMessage.includes('unauthorized')) {
     return 'Không có quyền truy cập!'
+  }
+  if (lowerMessage.includes('forbidden')) {
+    // Trích xuất tên permission từ message nếu có
+    const match = message.match(/\(([^)]+)\)/)
+    const permission = match ? match[1] : ''
+    return permission
+      ? `Không có quyền: Bạn không có quyền thực hiện hành động này (${permission})`
+      : 'Không có quyền: Bạn không có quyền thực hiện hành động này'
   }
 
   // Validation messages
@@ -71,4 +83,3 @@ export function translateMessage(message: string): string {
   // Nếu không match pattern nào, trả về message gốc
   return message
 }
-

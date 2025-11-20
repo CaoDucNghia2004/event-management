@@ -1,4 +1,5 @@
 import Swal from 'sweetalert2'
+import { translateMessage } from './translateMessage'
 
 export const handleApiError = (error: any) => {
   const graphErrors = error?.response?.data?.errors
@@ -15,8 +16,8 @@ export const handleApiError = (error: any) => {
   if (isForbidden) {
     Swal.fire({
       icon: 'error',
-      title: 'Không có quyền truy cập',
-      text: message
+      title: 'Lỗi!',
+      text: translateMessage(message)
     })
     return true // báo đã xử lý
   }

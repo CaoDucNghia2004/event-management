@@ -23,6 +23,7 @@ export const GET_PAPERS = gql`
         start_date
         end_date
         description
+        created_by
       }
     }
   }

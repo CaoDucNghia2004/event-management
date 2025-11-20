@@ -31,6 +31,7 @@ export interface Event {
   image_url?: string
   current_status: string
   current_approval_status: string
+  created_by: string
   location: Location
   approval_history?: ApprovalHistory[]
   status_history?: StatusHistory[]
