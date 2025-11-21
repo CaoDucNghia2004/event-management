@@ -64,7 +64,7 @@ export default function Header() {
   const getInitial = (name?: string) => (name ? name.charAt(0).toUpperCase() : '?')
 
   return (
-    <header className='w-full bg-gray-900 shadow-lg'>
+    <header className='w-full bg-gray-900 shadow-lg sticky top-0 z-50'>
       <div className='max-w-7xl mx-auto px-8 py-5'>
         <div className='flex items-center justify-between gap-8'>
           {/* Logo */}
